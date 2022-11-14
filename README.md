@@ -1,6 +1,6 @@
 # Englacial borehole temperature model
 
-Code to solve the one-dimensional englacial temperature evolution model presented in the article *Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation* by Montelli and Kingslake. 
+Code to solve the one-dimensional englacial temperature evolution model presented in the article *Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation* by Montelli and Kingslake in The Cryosphere. 
 
 The python code needed to run the model is included. Some of the figures presented in the paper were further tidied up; the resulting rasters are provided in the directory *figures*.
 
