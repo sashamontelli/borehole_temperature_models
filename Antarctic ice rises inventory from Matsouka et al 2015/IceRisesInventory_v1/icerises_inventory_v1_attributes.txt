@@ -1,0 +1,76 @@
+Description of inventory attributes:
+
+id_icerise:
+Unique id code for each feature (sorted after longitude)
+
+type, type_text:
+1 = Ice rise (topographic feature within an ice shelf, with distinct dynamics)
+2 = Ice ridge (major promontory/ridge between ice shelves/streams, with a clear divide)
+3 = Ice rumple (smaller grounded feature with irregular geometry, limited prominence and typically ice-shelf flow across it)
+4 = Nunatak (visible sediments or rock)
+
+name:
+Name of feature for those that have, mainly based on SCAR database
+
+divide:
+0 = no clear divide
+1 = clear divide
+
+island:
+0 = grounded below sea level
+1 = partly grounded above sea level (in Bedmap2)
+
+isolated:
+0 = inside or connected with an ice shelf
+1 = not connected to an ice shelf (only applies to type 2 ice ridges, mainly in Siple Coast)
+
+MOA2003, MOA2009, InSAR (data source):
+0 = not represented in that data set
+1 = represented in that data set
+(three zeros imply manual identification in satellite imagery)
+
+Area_km2:
+Polygon area in square kilometers, Lambert Equal Area Projection
+
+nrofpoints:
+Number of 1 km2 grid cells used for statistics calculation
+
+vel_mean:
+Mean absolute velocity over each feature based on the Antarctica Velocity Map 
+
+h_mean, h_min, h_max:
+Mean, minimum and maximum surface elevation of each feature extracted from Bedmap2
+
+h_rise:
+Relative height of the feature (h_max-h_min)
+
+bed_mean, bed_min, bed_max:
+Mean, minimum and maximum bedrock elevation of each feature extracted from Bedmap2
+
+thick:
+Mean ice thickness (h_mean-h_bed)
+
+slope_mean:
+Mean absolute slope of each feature extracted from Bedmap2
+
+Width, length:
+Shortest and longest distances (in unit km) from the summit to the edge of each feature
+
+longi, lati:
+longitude and latitude of the center point of each feature
+
+---
+
+References for external data sources:
+
+MOA2003 and MOA2009:
+Scambos, T. A., T. M. Haran, M. A. Fahnestock, T. H. Painter, and J. Bohlander (2007), MODIS-based Mosaic of Antarctica (MOA) data sets: Continent-wide surface morphology and snow grain size, Remote Sens. Environ., 111, 242-257, doi:10.1016/j.rse.2006.12.020.
+
+InSAR grounding line:
+Rignot, E., J. Mouginot, and B. Scheuchl (2011a), Antarctic grounding line mapping from differential satellite radar interferometry, Geophys. Res. Lett., 38(L10504), doi:10.1029/2011gl047109.
+
+Antarctica Velocity Map:
+Rignot, E., J. Mouginot, and B. Scheuchl (2011b), Ice Flow of the Antarctic Ice Sheet, Science, 333, 1427-1430, doi:10.1126/science.1208336.
+
+Bedmap2:
+Fretwell, P., et al. (2013), Bedmap2: improved ice bed, surface and thickness datasets for Antarctica, Cryosphere, 7, 375-393, doi:10.5194/tc-7-375-2013.

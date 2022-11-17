@@ -1,0 +1,18 @@
+# gridID 0
+#
+gridtype  = lonlat
+gridsize  = 62880
+xname     = rlon
+xlongname = longitude in rotated grid
+xunits    = degrees
+yname     = rlat
+ylongname = latitude in rotated grid
+yunits    = degrees
+xsize     = 262
+ysize     = 240
+xfirst    = -32.75
+xinc      = 0.25
+yfirst    = -30
+yinc      = 0.25
+xnpole     = -170. 
+ynpole     = 180.
