@@ -1,0 +1,27 @@
+name: "[impl] Validates functionality in this repository."
+
+on:
+  workflow_call:
+
+jobs:
+  _ba80c819-dbdd-44d7-a62b-785dab771a5f:
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+    name: "${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+
+    steps:
+      # Ensure that windows machines support long paths
+      - name: git Long File Path Support on Windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |-
+          git config --system core.longpaths true
+
+      - name: Placeholder
+        run: |-
+          echo "This is a placeholder introduced because GitHub only allows the manual invocation of workflows that exist on the mainline branch. The pull request that includes this file will be merged into the mainline branch and subsequent pull requests will replace this placeholder with actual content that can be verified."

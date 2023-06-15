@@ -1,0 +1,12 @@
+name: "on push"
+run-name: "${{ github.run_number }} [${{ github.actor }}] on ${{ github.ref_name }}"
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  _eca4b60a-baa0-484d-965f-1f8c005681c1:
+    name: "Validate (${{ github.ref_name }})"
+    uses: ./.github/workflows/callable_validate.yaml
