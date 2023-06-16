@@ -1,6 +1,6 @@
 # Englacial borehole temperature model
 
-Code to solve the one-dimensional englacial temperature evolution model (both inversion and forward sensitivity simulations) presented in the article *Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation* by Montelli and Kingslake in The Cryosphere. 
+Code to solve the one-dimensional englacial temperature evolution model (both inversion and forward sensitivity simulations) presented in the article *Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation* by Montelli and Kingslake in The Cryosphere.
 
 The python code needed to run the model is included. Some of the figures presented in the paper were further tidied up; the resulting rasters are provided in the directory *figures*.
 
@@ -11,6 +11,8 @@ All code runs in Python 3.9 and usually would require some modules to be install
 ### Downloading and running the code
 
 The easiest way to run this code is via Jupyter Notebook.
+
+To install the python dependencies required by this code, run `pip install -r requirements.txt`.
 
 Please let us know if you have any questions or suggestions through issues.
 
