@@ -1,0 +1,10 @@
+name: "Validate"
+run-name: "${{ github.run_number }} [${{ github.actor }}] on ${{ github.ref_name }}"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  _61e34512-57b7-4303-81cd-06912ee8a185:
+    name: "Validate (${{ github.ref_name }})"
+    uses: ./.github/workflows/callable_validate.yaml

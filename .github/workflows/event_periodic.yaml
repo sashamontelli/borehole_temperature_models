@@ -1,0 +1,11 @@
+name: "on periodic"
+run-name: "${{ github.run_number }} [${{ github.actor }}] on ${{ github.ref_name }}"
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Once a day at 12am UTC
+
+jobs:
+  _9c21c271-8c8f-4cc9-9827-0034f1132605:
+    name: "Validate (${{ github.ref_name }})"
+    uses: ./.github/workflows/callable_validate.yaml

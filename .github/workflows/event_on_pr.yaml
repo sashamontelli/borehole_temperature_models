@@ -1,0 +1,12 @@
+name: "on pull request"
+run-name: "${{ github.run_number }} [${{ github.actor }}] ${{ github.head_ref }} -> ${{ github.base_ref }}"
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  _e0837d8d-cb45-43f5-83de-7c1997d74e27:
+    name: "Validate (target: ${{ github.base_ref }})"
+    uses: ./.github/workflows/callable_validate.yaml
