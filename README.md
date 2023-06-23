@@ -12,7 +12,18 @@ All code runs in Python 3.9 and usually would require some modules to be install
 
 The easiest way to run this code is via Jupyter Notebook.
 
+#### Running the python code locally
+
 To install the python dependencies required by this code, run `pip install -r requirements.txt`.
+
+#### Building the package
+
+To build a package/wheel for distribution, run:
+
+1. `pip install -r requirements-package.txt`
+1. `python Build.py Build`
+
+#### Improvements
 
 Please let us know if you have any questions or suggestions through issues.
 

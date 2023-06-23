@@ -1,0 +1,50 @@
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+[build-system]
+requires = ["setuptools>=63.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "borehole_temperature_models"
+description = "Code to solve the one-dimensional englacial temperature evolution model (both inversion and forward sensitivity simulations) presented in the article Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation by Montelli and Kingslake in The Cryosphere."
+
+license = { text = "MIT License" }
+
+authors = [
+    { name = "Sasha Montelli", email = "sashamontelli@gmail.com" },
+]
+
+keywords = [
+    "Borehole thermometry",
+    "Englacial temperatures",
+    "Glaciology" ,
+    "Ice rises",
+    "Ice sheets",
+    "Ice dynamics",
+    "Temperature inversion",
+    "Thermal modelling",
+]
+
+# https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+dynamic = [
+    "version",
+    "dependencies",
+]
+
+[project.urls]
+Homepage = "https://github.com/sashamontelli/borehole_temperature_models"
+Documentation = "https://github.com/sashamontelli/borehole_temperature_models"
+Repository = "https://github.com/sashamontelli/borehole_temperature_models"
+
+[tool.setuptools.dynamic]
+version = { attr = "borehole_temperature_models.__version__" }
+dependencies = { file = "requirements.txt" }
