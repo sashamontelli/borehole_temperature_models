@@ -2,6 +2,7 @@
 
 import ctypes
 import subprocess
+import re
 import sys
 import textwrap
 
@@ -63,6 +64,53 @@ def Publish() -> None:
     """Publishes the python package to PyPi."""
 
     raise Exception("TODO: Not implemented yet.")
+
+
+# ----------------------------------------------------------------------
+@app.command("UpdateVersion", no_args_is_help=False)
+def UpdateVersion(
+    verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
+) -> None:
+    """Updates the version of the package based on GitHub changes."""
+
+    this_dir = Path(__file__).parent
+
+    # Calculate the version
+    sys.stdout.write("Calculating version...")
+    sys.stdout.flush()
+
+    command_line = 'docker run --rm -v "{}:/local" dbrownell/autosemver:0.6.0 --path /local --no-metadata --quiet'.format(this_dir)
+
+    result = _ExecuteCommand(command_line)
+
+    sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
+
+    result.RaiseOnError()
+
+    version = result.output.strip()
+
+    # Update the source
+    sys.stdout.write("Updating source...")
+    sys.stdout.flush()
+
+    init_filename = this_dir / "src" / "borehole_temperature_models" / "__init__.py"
+    assert init_filename.is_file(), init_filename
+
+    with init_filename.open(encoding="utf-8") as f:
+        content = f.read()
+
+    new_content = re.sub(
+        r'^__version__ = ".+?"$',
+        f'__version__ = "{version}"',
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    with init_filename.open("w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    sys.stdout.write("DONE!\n\n")
 
 
 # ----------------------------------------------------------------------
