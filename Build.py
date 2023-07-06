@@ -1,12 +1,13 @@
 """Automates activities associated with building and deploying the python package."""
 
 import ctypes
-import subprocess
 import re
+import subprocess
 import sys
 import textwrap
 
 from dataclasses import dataclass, field
+from getpass import getpass
 from pathlib import Path
 from typing import Optional
 
@@ -59,14 +60,6 @@ def Build(
 
 
 # ----------------------------------------------------------------------
-@app.command("Publish", no_args_is_help=True)
-def Publish() -> None:
-    """Publishes the python package to PyPi."""
-
-    raise Exception("TODO: Not implemented yet.")
-
-
-# ----------------------------------------------------------------------
 @app.command("UpdateVersion", no_args_is_help=False)
 def UpdateVersion(
     verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
@@ -79,7 +72,7 @@ def UpdateVersion(
     sys.stdout.write("Calculating version...")
     sys.stdout.flush()
 
-    command_line = 'docker run --rm -v "{}:/local" dbrownell/autosemver:0.6.0 --path /local --no-metadata --quiet'.format(this_dir)
+    command_line = 'docker run --rm -v "{}:/local" dbrownell/autosemver:0.6.0 --path /local --no-branch-name --no-metadata --quiet'.format(this_dir)
 
     result = _ExecuteCommand(command_line)
 
@@ -114,6 +107,44 @@ def UpdateVersion(
 
 
 # ----------------------------------------------------------------------
+@app.command("Publish", no_args_is_help=False)
+def Publish(
+    pypi_api_token: str=typer.Argument(..., help="API token as generated on PyPi.org or test.PyPi.org; this token should be scoped to this project only."),
+    production: bool=typer.Option(False, "--production", help="Push to the production version of PyPi (PyPi.org); the test PyPi server is used by default (test.PyPi.org)."),
+    verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
+) -> None:
+    """Publishes the python package to PyPi."""
+
+    this_dir = Path(__file__).parent
+
+    dist_dir = this_dir / "dist"
+    if not dist_dir.is_dir():
+        raise Exception("The distribution directory '{}' does not exist. Please run this script with the 'Build' argument to create it.\n")
+
+    # Publish
+    repository_url = "https://upload.PyPi.org/legacy/" if production else "https://test.PyPi.org/legacy/"
+
+    sys.stdout.write("Publishing to '{}'...".format(repository_url))
+    sys.stdout.flush()
+
+    command_line = 'twine upload --repository-url {} --username __token__ --password {} --non-interactive --disable-progress-bar {}"dist/*.whl"'.format(
+        repository_url,
+        pypi_api_token,
+        "--verbose " if verbose else "",
+    )
+
+    result = _ExecuteCommand(command_line)
+
+    sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
+
+    result.RaiseOnError()
+
+    if verbose:
+        sys.stdout.write(result.output)
+
+
+
+# ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -133,6 +164,12 @@ class _ExecuteCommandResult(object):
 
         assert self.error_command_line is not None
 
+        error_command_line = re.sub(
+            r'--password \"?\S+\"?',
+            "--password *****",
+            self.error_command_line.rstrip(),
+        )
+
         raise Exception(
             textwrap.dedent(
                 """\
@@ -142,13 +179,14 @@ class _ExecuteCommandResult(object):
 
                 Return Code
                 -----------
+                {}
 
                 Output
                 ------
                 {}
                 """,
             ).format(
-                self.error_command_line.rstrip(),
+                error_command_line,
                 self.returncode,
                 self.output.rstrip(),
             ),
