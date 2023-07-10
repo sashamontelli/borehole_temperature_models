@@ -35,9 +35,52 @@ classifiers = [
     "Topic :: Scientific/Engineering :: GIS",
 ]
 
+dependencies = [
+    # Note that the notebook is currently importing content that is not used. These imports will be
+    # removed in subsequent changes. For now, the requirements in this file reflect the imports
+    # specified in the notebook.
+    #
+    # However, the python libraries listed below are installed as binary wheels (meaning that they
+    # require compilation on the host machine). Those dependecies that have dependencies on native
+    # library not available by default have been removed.
+    #
+    #     - cartopy~=0.21
+    #     - geoplot~=0.5
+    #     - shapely~=2.0
+    #
+
+    "cmocean ~= 3.0",
+    "dask ~= 2023.6",
+    "emcee ~= 3.1",
+    "gcsfs ~= 2023.6",
+    "geopandas ~= 0.13",
+    "h5py ~= 3.8",
+    "jupyter ~= 1.0",
+    "matplotlib ~= 3.7",
+    "netCDF4 ~= 1.6",
+    "numpy ~= 1.24",
+    "pandas ~= 2.0",
+    "scipy ~= 1.10",
+    "tqdm ~= 4.65",
+    "xarray ~= 2023.5",
+]
+
 dynamic = [
     "version",
-    "dependencies",
+]
+
+[project.optional-dependencies]
+# Dependnecies required to develop the library
+dev = [
+    "pytest ~= 7.4",
+    "pytest-cov ~= 4.1",
+]
+
+# Dependencies required to package the library
+package = [
+    "build ~= 0.10",
+    "twine ~= 4.0",
+    "typer ~= 0.6",
 ]
 
 [project.urls]
@@ -47,4 +90,3 @@ Repository = "https://github.com/sashamontelli/borehole_temperature_models"
 
 [tool.setuptools.dynamic]
 version = { attr = "borehole_temperature_models.__version__" }
-dependencies = { file = "requirements.txt" }
