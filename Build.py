@@ -35,14 +35,14 @@ app                                         = typer.Typer(
 
 
 # ----------------------------------------------------------------------
-@app.command("Build", no_args_is_help=False)
-def Build(
+@app.command("Package", no_args_is_help=False)
+def Package(
     additional_args: list[str]=typer.Option([], "--arg", help="Additional arguments passed to the build command."),
     verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
 ) -> None:
     """Builds the python package."""
 
-    sys.stdout.write("Building...")
+    sys.stdout.write("Packaging...")
     sys.stdout.flush()
 
     result = _ExecuteCommand(
@@ -50,6 +50,42 @@ def Build(
             "" if not additional_args else " {}".format(" ".join('"{}"'.format(arg) for arg in additional_args)),
         ),
     )
+
+    sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
+
+    result.RaiseOnError()
+
+    if verbose:
+        sys.stdout.write(result.output)
+
+
+# ----------------------------------------------------------------------
+@app.command("Test", no_args_is_help=False)
+def Test(
+    code_coverage: bool=typer.Option(False, "--code-coverage", help="Run tests with code coverage information."),
+    min_coverage: Optional[float]=typer.Option(None, "--min-coverage", min=0.0, max=100.0, help="Fail if code coverage percentage is less than this value."),
+    verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
+) -> None:
+    """Tests the python code."""
+
+    if code_coverage:
+        min_coverage = min_coverage or 90.0
+    elif min_coverage:
+        code_coverage = True
+
+    assert (
+        (code_coverage and min_coverage)
+        or (not code_coverage and min_coverage is None)
+    ), (code_coverage, min_coverage)
+
+    sys.stdout.write("Testing...")
+    sys.stdout.flush()
+
+    command_line = 'pytest {}src/tests'.format(
+        "" if not code_coverage else "--cov=borehole_temperature_models --cov-fail-under={} ".format(min_coverage),
+    )
+
+    result = _ExecuteCommand(command_line)
 
     sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
 
