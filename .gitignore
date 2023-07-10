@@ -1,3 +1,5 @@
 *-checkpoint.ipynb
 dist
 src/*.egg-info
+.coverage
+__pycache__

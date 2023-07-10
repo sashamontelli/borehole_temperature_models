@@ -14,14 +14,21 @@ The easiest way to run this code is via Jupyter Notebook.
 
 #### Running the python code locally
 
-To install the python dependencies required by this code, run `pip install -r requirements.txt`.
+To install the python dependencies required by this code, run `pip install -e .`.
+
+#### Developing the code locally
+
+1. `pip install -e ".[dev]"`
+1. `python Build.py Test`
 
 #### Building the package
 
 To build a package/wheel for distribution, run:
 
-1. `pip install -r requirements-package.txt`
-1. `python Build.py Build`
+1. `pip install -e ".[dev,package]"`
+1. `python Build.py UpdateVersion` [optional]
+1. `python Build.py Package`
+1. `python Build.py Publish` [optional]
 
 #### Improvements
 
