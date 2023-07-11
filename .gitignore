@@ -1,5 +1,7 @@
-*-checkpoint.ipynb
+__pycache__
+.coverage
+.vscode
 dist
 src/*.egg-info
-.coverage
-__pycache__
+
+*-checkpoint.ipynb
