@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterator
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from borehole_temperature_models.TemperatureModel import TemperatureModel
@@ -42,7 +43,7 @@ def test_Create2() -> None:
 def test_NaN(
     attribute_name: str,
 ) -> None:
-    d: dict[str, np.ndarray] = {
+    d: dict[str, npt.NDArray[np.float64]] = {
         "Tmeasured": np.random.rand(3, 2),
         "z": np.random.rand(3, 2),
         "Tvar_H_Tmatrix": np.random.rand(3, 2),

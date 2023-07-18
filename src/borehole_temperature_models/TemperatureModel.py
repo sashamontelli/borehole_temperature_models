@@ -1,42 +1,17 @@
-# TODO: Remove imports that are not used
 import base64
 import json
-import math
-import multiprocessing as mp
-import random
-import time
 
 from dataclasses import dataclass
 from io import BytesIO
-from multiprocessing import Pool
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Optional
+from typing import Any, Callable, Optional
 
-import cmocean
-import dask
-import dask.bag as db
-import emcee
-import fsspec
-import gcsfs
-import geopandas as gpd
-import h5py
-import matplotlib as mpl
-import matplotlib.font_manager
-import matplotlib.font_manager as fm
-import netCDF4 as nc
 import numpy as np
-import pandas as pd
-import pyproj
-import scipy
-import xarray as xr
+import numpy.typing as npt
 
-from matplotlib import pyplot as plt
-from matplotlib.gridspec import GridSpec
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from mpl_toolkits.mplot3d import Axes3D
-from netCDF4 import Dataset
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
-from tqdm import tqdm
+
+from borehole_temperature_models import Constants
 
 
 # ----------------------------------------------------------------------
@@ -48,27 +23,10 @@ from tqdm import tqdm
 class TemperatureModel(object):
     # ----------------------------------------------------------------------
     # |  Data
-    yr_to_s: ClassVar[float]                = 365.25*24*60*60 # Seconds in a year
-    dt_years: ClassVar[int]                 = 1 # TODO: Is this a param?
-    dt: ClassVar[float]                     = dt_years * yr_to_s
-
-    c_i: ClassVar[float]                    = 2e3                           # Head capacity of ice
-    c_r: ClassVar[float]                    = 7.9e2                         # Heat capacity of basal rock
-    k_i: ClassVar[float]                    = 2.3                           # Thermal conductivity of ice
-    k_r: ClassVar[float]                    = 2.8                           # Thermal conductivity of basal rock
-    rho_i: ClassVar[float]                  = 918                           # Density of ice
-    rho_r: ClassVar[float]                  = 2750                          # Density of basal rock
-    alpha_i: ClassVar[float]                = k_i / rho_i / c_i             # Alpha for ice
-    alpha_r: ClassVar[float]                = k_r / rho_r / c_r             # Alpha for basal rock
-    n: ClassVar[float]                      = 3                             # Glen's flow law exponent
-    g: ClassVar[float]                      = 9.81                          # Gravitational acceleration
-    A: ClassVar[float]                      = 2e-16                         # Rheological constant determining soft ice as a function of temperature
-
-    # ----------------------------------------------------------------------
-    Tmeasured: np.ndarray
-    z: np.ndarray
-    Tvar_H_Tmatrix: np.ndarray
-    zvar_H_Tmatrix: np.ndarray
+    Tmeasured: npt.NDArray[np.float64]
+    z: npt.NDArray[np.float64]
+    Tvar_H_Tmatrix: npt.NDArray[np.float64]
+    zvar_H_Tmatrix: npt.NDArray[np.float64]
 
     # ----------------------------------------------------------------------
     # |  Methods
@@ -95,7 +53,6 @@ class TemperatureModel(object):
         zr = np.linspace(-Hr, 0, int(Hr/dz) + 1) #  Space calculation domain for bedrock
         l = len(zr)  # Index for ice-bed interface to be used in the loop calculations
         Lzi = len(zi) #  Number of elements in space domain for ice
-        Lzr = len(zr) #  Number of elements in space domain for bedrock
         z = np.concatenate((zr[:-1],zi))  #  Merging space domains for ice and bedrock into one single unified space domain
         Lz = len(z) # Calculating the number of nodes in the unified space domain
 
@@ -116,7 +73,7 @@ class TemperatureModel(object):
         temphistory = f(tmnew) # Interpolating surface temperature vector over the new time vector
         acchistory_yr = facc(tmnew) # Interpolating accumulation vector over the new time vector
 
-        acchistory = acchistory_yr / cls.yr_to_s # Converting accumulation vector from m/yr to m/s
+        acchistory = acchistory_yr / Constants.yr_to_s # Converting accumulation vector from m/yr to m/s
 
         a_steady = acchistory[0] # Taking the first value of the accumulation vector for steady state profile calculation
         Ts_surf_steady = temphistory[0] # Taking the first value of the temperature vector for steady state profile calculation
@@ -133,7 +90,7 @@ class TemperatureModel(object):
 
         ### Grounded ice steady state T profile with constant ice thickness:
 
-        for i in range(0, int(t_steady_years_total)):
+        for _ in range(0, int(t_steady_years_total)):
 
             Hi = thkhistory[0]  # Taking the first value of thickness history for steady state calculation
             zi = np.linspace(0, Hi, Lzi)  #  Space calculation domain for ice of initial thickness
@@ -144,18 +101,18 @@ class TemperatureModel(object):
             # Grounded ice vertical velocity profile after Lliboutry (1979)
 
             dws = a_steady
-            wzt = (1 - (((cls.n + 2) / (cls.n + 1)) * (1 - zi / Hi)) + (1 / (cls.n + 1)) * np.power((1 - zi / Hi), (cls.n + 2)))
+            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
             ws = -dws * wzt
 
             # Advection-diffusion temperature calculation above ice-rock interface
 
-            Ts[l:-1] = Ts[l:-1] + cls.dt*(cls.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
             Ts[-1] = Ts_surf_steady # Temperature forcing is constant and equals the first value of the input surface temperature vector
 
             # Diffusion temperature calculation below ice-rock interface
 
-            Ts[1:l] = Ts[1:l] + cls.dt * cls.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/cls.k_r*dzr)
+            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
+            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
 
         ### Grounded ice T profile with time-variable forcings:
@@ -180,19 +137,19 @@ class TemperatureModel(object):
 
             # Grounded ice vertical velocity profile after Lliboutry (1979)
 
-            dws = acchistory[j] - ((thkhistory[j] - thkhistory[j - 1]) / cls.dt); # When thickness is variable through time
-            wzt = (1 - (((cls.n + 2) / (cls.n + 1)) * (1 - zi / Hi)) + (1 / (cls.n + 1)) * np.power((1 - zi / Hi), (cls.n + 2)))
+            dws = acchistory[j] - ((thkhistory[j] - thkhistory[j - 1]) / Constants.dt); # When thickness is variable through time
+            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
             ws = -dws * wzt
 
             # Advection-diffusion temperature calculation above ice-rock interface
 
-            Ts[l:-1] = Ts[l:-1] + cls.dt*(cls.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
             Ts[-1] = temphistory[j] # Temperature forcing equals value of the imported surface temperature vector at each point in time
 
             # Diffusion temperature calculation below ice-rock interface
 
-            Ts[1:l] = Ts[1:l] + cls.dt * cls.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/cls.k_r*dzr)
+            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
+            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
 
             # Recording the results into the temperature and depth matrixes
@@ -226,15 +183,15 @@ class TemperatureModel(object):
 
             # Advection-diffusion temperature calculation above ice-rock interface
 
-            Ts[l:-1] = Ts[l:-1] + cls.dt*(cls.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(w[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(w[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
             Ts[-1] = temphistory[jj+t_before_ungrounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
 
             Ts[l-1] = -1.89 - 7.53e-4*Hi # Empirically-derived, thickness-dependent seawater freezing point
 
             # Diffusion temperature calculation below ice-rock interface
 
-            Ts[1:l-1] = Ts[1:l-1] + cls.dt*cls.alpha_r*(Ts[2:l]-2*Ts[1:l-1]+Ts[0:l-2])/dzr**2
-            Ts[0] = Ts[1] + (G/cls.k_r*dzr)
+            Ts[1:l-1] = Ts[1:l-1] + Constants.dt*Constants.alpha_r*(Ts[2:l]-2*Ts[1:l-1]+Ts[0:l-2])/dzr**2
+            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
 
             # Recording the results into the temperature and depth matrixes
@@ -261,19 +218,19 @@ class TemperatureModel(object):
 
             # Grounded ice vertical velocity profile
 
-            dws = acchistory[jjj+t_before_grounding] - ((thkhistory[jjj+t_before_grounding] - thkhistory[jjj+t_before_grounding - 1]) / cls.dt) # When thickness is variable through time
-            wzt = (1 - (((cls.n + 2) / (cls.n + 1)) * (1 - zi / Hi)) + (1 / (cls.n + 1)) * np.power((1 - zi / Hi), (cls.n + 2)))
+            dws = acchistory[jjj+t_before_grounding] - ((thkhistory[jjj+t_before_grounding] - thkhistory[jjj+t_before_grounding - 1]) / Constants.dt) # When thickness is variable through time
+            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
             ws = -dws * wzt
 
             # Advection-diffusion temperature calculation above ice-rock interface
 
-            Ts[l:-1] = Ts[l:-1] + cls.dt*(cls.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
             Ts[-1] = temphistory[jjj+t_before_grounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
 
             # Diffusion temperature calculation below ice-rock interface
 
-            Ts[1:l] = Ts[1:l] + cls.dt * cls.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/cls.k_r*dzr)
+            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
+            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
 
             # Recording the results into the temperature and depth matrixes
@@ -316,7 +273,7 @@ class TemperatureModel(object):
         # ----------------------------------------------------------------------
         def ConvertArray(
             array: str,
-        ) -> np.ndarray:
+        ) -> npt.NDArray[np.float64]:
             source = BytesIO(base64.b64decode(array.encode("ascii")))
             return np.load(source,  allow_pickle=False)
 
@@ -356,7 +313,7 @@ class TemperatureModel(object):
         with filename.open("w") as f:
             # ----------------------------------------------------------------------
             def ConvertArray(
-                array: np.ndarray,
+                array: npt.NDArray[np.float64],
             ) -> str:
                 sink = BytesIO()
 
@@ -392,7 +349,7 @@ class TemperatureModel(object):
         *,
         allow_tolerance: bool=False,
     ) -> bool:
-        equality_func: Optional[Callable[[np.ndarray, np.ndarray], bool]] = None
+        equality_func: Optional[Callable[[npt.NDArray[np.float64], npt.NDArray[np.float64]], bool]] = None
 
         if allow_tolerance:
             equality_func = lambda a, b: np.array_equal(a, b, equal_nan=True)
@@ -411,11 +368,3 @@ class TemperatureModel(object):
                 return False
 
         return True
-
-# TODO: RMS
-# TODO: rsmpl
-# TODO: model_syntentic
-# TODO: model_measured
-# TODO: lnlike
-# TODO: lnprior
-# TODO: lnprob
