@@ -1,5 +1,6 @@
 import copy
 import json
+import pickle
 import re
 
 from pathlib import Path
@@ -13,10 +14,16 @@ from borehole_temperature_models.TemperatureModel import TemperatureModel
 
 
 # ----------------------------------------------------------------------
+_data_dir                                   = Path(__file__).parent / "data"
+
+
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def test_Create1() -> None:
     model = TemperatureModel.Create([360,470], 500, 10, 5e4, 1e4, 1e4, 7e2, [-24.3, -24.3], [0.11, 0.11], 950e-4)
 
-    last_known_good = TemperatureModel.Load(Path(__file__).parent / "data" / "TemperatureModel" / "Create1.json")
+    last_known_good = TemperatureModel.Load(_data_dir / "TemperatureModel" / "Create1.json")
 
     assert TemperatureModel.Compare(
         model,
@@ -29,7 +36,7 @@ def test_Create1() -> None:
 def test_Create2() -> None:
     model = TemperatureModel.Create([400,470], 500, 10, 5e4, 1e4, 1e4, 2e3, [-30, -25], [0.2, 0.1], 700e-4)
 
-    last_known_good = TemperatureModel.Load(Path(__file__).parent / "data" / "TemperatureModel" / "Create2.json")
+    last_known_good = TemperatureModel.Load(_data_dir / "TemperatureModel" / "Create2.json")
 
     assert TemperatureModel.Compare(
         model,
@@ -39,13 +46,51 @@ def test_Create2() -> None:
 
 
 # ----------------------------------------------------------------------
-@pytest.mark.parametrize("attribute_name", ["Tmeasured", "z", "Tvar_H_Tmatrix", "zvar_H_Tmatrix"])
+def _GetModelDataFilenames() -> list[str]:
+    data_dir = _data_dir / "TemperatureModel"
+    assert data_dir.is_dir(), data_dir
+
+    data_filenames: list[str] = []
+
+    for data_filename in data_dir.iterdir():
+        if not data_filename.name.startswith("model"):
+            continue
+
+        data_filenames.append(str(data_filename))
+
+    return data_filenames
+
+
+@pytest.mark.parametrize("data_filename", _GetModelDataFilenames())
+def test_ModelDataFile(
+    data_filename: str,
+    benchmark,
+):
+    with Path(data_filename).open("rb") as f:
+        content = pickle.load(f)
+
+    original_model = TemperatureModel(
+        content["output"]["Tmeasured"],
+        content["output"]["Tvar_H_Tmatrix"],
+        content["output"]["zvar_H_Tmatrix"],
+    )
+
+    created_model = benchmark(TemperatureModel.Create, **content["input"])
+
+    assert TemperatureModel.Compare(
+        created_model,
+        original_model,
+        allow_tolerance=True,
+    )
+
+
+# ----------------------------------------------------------------------
+@pytest.mark.parametrize("attribute_name", ["Tmeasured", "Tvar_H_Tmatrix", "zvar_H_Tmatrix"])
 def test_NaN(
     attribute_name: str,
 ) -> None:
     d: dict[str, npt.NDArray[np.float64]] = {
         "Tmeasured": np.random.rand(3, 2),
-        "z": np.random.rand(3, 2),
         "Tvar_H_Tmatrix": np.random.rand(3, 2),
         "zvar_H_Tmatrix": np.random.rand(3, 2),
     }
@@ -123,7 +168,7 @@ def test_LoadMissingData(fs, _random_model) -> None:
 
 
 # ----------------------------------------------------------------------`
-@pytest.mark.parametrize("attribute_name", ["Tmeasured", "z", "Tvar_H_Tmatrix", "zvar_H_Tmatrix"])
+@pytest.mark.parametrize("attribute_name", ["Tmeasured", "Tvar_H_Tmatrix", "zvar_H_Tmatrix"])
 def test_CompareMethods(
     _random_model: TemperatureModel,
     attribute_name: str,
@@ -156,7 +201,6 @@ def test_CompareDifferentTypes(_random_model):
 def _random_model() -> Iterator[TemperatureModel]:
     yield TemperatureModel(
         np.random.rand(3, 2),
-        np.random.rand(2, 3),
         np.random.rand(1, 3),
         np.random.rand(3, 1),
     )
