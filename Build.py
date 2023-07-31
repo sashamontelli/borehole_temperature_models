@@ -155,7 +155,9 @@ def Publish(
 
     dist_dir = this_dir / "dist"
     if not dist_dir.is_dir():
-        raise Exception("The distribution directory '{}' does not exist. Please run this script with the 'Build' argument to create it.\n")
+        raise Exception(
+            "The distribution directory '{}' does not exist. Please run this script with the 'Build' argument to create it.\n".format(dist_dir),
+        )
 
     # Publish
     repository_url = "https://upload.PyPi.org/legacy/" if production else "https://test.PyPi.org/legacy/"

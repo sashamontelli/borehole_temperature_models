@@ -54,4 +54,4 @@ def Timer(
     finally:
         elapsed = time.perf_counter() - counter
 
-        sys.stdout.write("{}: {}\n".format(header or "Timer", elapsed))
+        sys.stdout.write("{}{} seconds\n".format("{}:".format(header) if header else "", elapsed))

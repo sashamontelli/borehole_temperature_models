@@ -243,15 +243,16 @@ class _Calculator(object):
     thkhistory: npt.NDArray[np.float64]
     acchistory: npt.NDArray[np.float64]
 
-    _len_zi: int                                                            = field(init=False)
-    _len_zr: int                                                            = field(init=False)
+    _len_zi: int                            = field(init=False)
+    _len_zr: int                            = field(init=False)
 
-    _t_before_ungrounding: int                                              = field(init=False)
-    _t_before_grounding: int                                                = field(init=False)
+    _t_before_ungrounding: int              = field(init=False)
+    _t_before_grounding: int                = field(init=False)
 
-    _Ts: npt.NDArray[np.float64]                                            = field(init=False)
-    _Tvar_H_matrix: npt.NDArray[npt.NDArray[np.float64]]                    = field(init=False)
-    _zvar_H_matrix: npt.NDArray[npt.NDArray[np.float64]]                    = field(init=False)
+    _Ts: npt.NDArray[np.float64]            = field(init=False)
+
+    _Tvar_H_matrix: npt.NDArray[Any]        = field(init=False)
+    _zvar_H_matrix: npt.NDArray[Any]        = field(init=False)
 
     # ----------------------------------------------------------------------
     # |  Methods
@@ -518,35 +519,6 @@ class _Calculator(object):
         if num_iterations == 0:
             return
 
-        # Example Loop views given:
-        #
-        #   `len_zr` == 4
-        #   `calculation_offset` == 0
-        #
-        #                 len_zr
-        #                   |
-        #                   V
-        # | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
-        #                   -----------------: view1
-        #                       -----------------: view2
-        #               -----------------: view3
-        #       ---------: view4
-        #           ---------: view5
-        #   ---------: view6
-
-        view1 = self._Ts[self._len_zr:-1]
-        view2 = self._Ts[self._len_zr + 1:]
-        view3 = self._Ts[self._len_zr - 1:-2]
-        view4 = self._Ts[1:self._len_zr - calculation_offset]
-        view5 = self._Ts[2:self._len_zr + 1 - calculation_offset]
-        view6 = self._Ts[:self._len_zr - 1 - calculation_offset]
-
-        drz_squared = self.dzr ** 2
-
-        post_loop_delta_value = (self.G / Constants.k_r * self.dzr)
-
-        z: Optional[npt.NDArray[np.float64]] = None
-
         if callable(update_matrix_index_offset_or_post_loop_callback):
             post_loop_callback_func = update_matrix_index_offset_or_post_loop_callback
         elif isinstance(update_matrix_index_offset_or_post_loop_callback, int):
@@ -566,9 +538,41 @@ class _Calculator(object):
         else:
             post_loop_callback_func = lambda *args, **kwargs: None
 
+        # BugBug: Potentially consider j
+
+        # Example Loop views given:
+        #
+        #   `len_zr` == 4
+        #   `calculation_offset` == 0
+        #
+        #                 len_zr
+        #                   |
+        #                   V
+        # | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+        #                   -----------------: view1 (BugBUg: ice domain)
+        #                       -----------------: view2 (BugBug:
+        #               -----------------: view3
+        #       ---------: view4
+        #           ---------: view5
+        #   ---------: view6
+
+        view1 = self._Ts[self._len_zr:-1]
+        view2 = self._Ts[self._len_zr + 1:]
+        view3 = self._Ts[self._len_zr - 1:-2]
+        view4 = self._Ts[1:self._len_zr - calculation_offset]
+        view5 = self._Ts[2:self._len_zr + 1 - calculation_offset]
+        view6 = self._Ts[:self._len_zr - 1 - calculation_offset]
+
+        drz_squared = self.dzr ** 2
+
+        post_loop_delta_value = (self.G / Constants.k_r * self.dzr)
+
+        z: Optional[npt.NDArray[np.float64]] = None
+
         for loop_index in range(num_iterations):
             dz, ws, z = pre_loop_calc_func(loop_index)
 
+            # BugBug: 1st derivative
             view1 += (
                 Constants.dt
                 * (
@@ -585,6 +589,7 @@ class _Calculator(object):
             # Perform loop-specific updates in the calling function
             intra_loop_callback_func(loop_index)
 
+            # BugBug: 2nd derivative
             view4 += (
                 Constants.dt
                 * Constants.alpha_r
