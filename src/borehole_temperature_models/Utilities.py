@@ -54,4 +54,19 @@ def Timer(
     finally:
         elapsed = time.perf_counter() - counter
 
-        sys.stdout.write("{}: {}\n".format(header or "Timer", elapsed))
+        seconds_per_hour = 60 * 60
+
+        hours = int(elapsed / seconds_per_hour)
+        elapsed -= hours * seconds_per_hour
+
+        minutes = int(elapsed / 60)
+        elapsed -= minutes * 60
+
+        sys.stdout.write(
+            "{}{}:{:02d}:{:.02f}\n".format(
+                "{}:".format(header) if header else "",
+                hours,
+                minutes,
+                elapsed,
+            ),
+        )

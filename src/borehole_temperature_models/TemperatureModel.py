@@ -243,15 +243,16 @@ class _Calculator(object):
     thkhistory: npt.NDArray[np.float64]
     acchistory: npt.NDArray[np.float64]
 
-    _len_zi: int                                                            = field(init=False)
-    _len_zr: int                                                            = field(init=False)
+    _len_zi: int                            = field(init=False)
+    _len_zr: int                            = field(init=False)
 
-    _t_before_ungrounding: int                                              = field(init=False)
-    _t_before_grounding: int                                                = field(init=False)
+    _t_before_ungrounding: int              = field(init=False)
+    _t_before_grounding: int                = field(init=False)
 
-    _Ts: npt.NDArray[np.float64]                                            = field(init=False)
-    _Tvar_H_matrix: npt.NDArray[npt.NDArray[np.float64]]                    = field(init=False)
-    _zvar_H_matrix: npt.NDArray[npt.NDArray[np.float64]]                    = field(init=False)
+    _Ts: npt.NDArray[np.float64]            = field(init=False)
+
+    _Tvar_H_matrix: npt.NDArray[Any]        = field(init=False)
+    _zvar_H_matrix: npt.NDArray[Any]        = field(init=False)
 
     # ----------------------------------------------------------------------
     # |  Methods
@@ -518,6 +519,25 @@ class _Calculator(object):
         if num_iterations == 0:
             return
 
+        if callable(update_matrix_index_offset_or_post_loop_callback):
+            post_loop_callback_func = update_matrix_index_offset_or_post_loop_callback
+        elif isinstance(update_matrix_index_offset_or_post_loop_callback, int):
+            update_matrix_index_offset = update_matrix_index_offset_or_post_loop_callback
+
+            # ----------------------------------------------------------------------
+            def UpdateMatrixValues(
+                loop_index: int,
+                z: npt.NDArray[np.float64],
+            ) -> None:
+                self._Tvar_H_matrix[:, loop_index + update_matrix_index_offset] = self._Ts
+                self._zvar_H_matrix[:, loop_index + update_matrix_index_offset] = z
+
+            # ----------------------------------------------------------------------
+
+            post_loop_callback_func = UpdateMatrixValues
+        else:
+            post_loop_callback_func = lambda *args, **kwargs: None
+
         # Example Loop views given:
         #
         #   `len_zr` == 4
@@ -546,25 +566,6 @@ class _Calculator(object):
         post_loop_delta_value = (self.G / Constants.k_r * self.dzr)
 
         z: Optional[npt.NDArray[np.float64]] = None
-
-        if callable(update_matrix_index_offset_or_post_loop_callback):
-            post_loop_callback_func = update_matrix_index_offset_or_post_loop_callback
-        elif isinstance(update_matrix_index_offset_or_post_loop_callback, int):
-            update_matrix_index_offset = update_matrix_index_offset_or_post_loop_callback
-
-            # ----------------------------------------------------------------------
-            def UpdateMatrixValues(
-                loop_index: int,
-                z: npt.NDArray[np.float64],
-            ) -> None:
-                self._Tvar_H_matrix[:, loop_index + update_matrix_index_offset] = self._Ts
-                self._zvar_H_matrix[:, loop_index + update_matrix_index_offset] = z
-
-            # ----------------------------------------------------------------------
-
-            post_loop_callback_func = UpdateMatrixValues
-        else:
-            post_loop_callback_func = lambda *args, **kwargs: None
 
         for loop_index in range(num_iterations):
             dz, ws, z = pre_loop_calc_func(loop_index)
