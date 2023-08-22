@@ -4,7 +4,7 @@ requires = ["setuptools>=63.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "borehole_temperature_models"
+name = "icetemp"
 description = "Code to solve the one-dimensional englacial temperature evolution model (both inversion and forward sensitivity simulations) presented in the article Geothermal heat flux is the dominant source of uncertainty in englacial-temperature-based dating of ice-rise formation by Montelli and Kingslake in The Cryosphere."
 
 license = { text = "MIT License" }
