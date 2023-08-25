@@ -29,9 +29,6 @@ def test_ModelMeasured(data_filename):
         with Path(data_filename).open("rb") as f:
             theta, z, output = pickle.load(f)
 
-        generated_output = ModelMeasured(
-            *theta,
-            z=z,
-        )
+        generated_output = ModelMeasured(*theta)
 
         assert np.array_equal(generated_output, output)

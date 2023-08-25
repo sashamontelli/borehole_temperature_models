@@ -31,7 +31,7 @@ def rsmpl(
     T_in: npt.NDArray[np.float64],
     z_in: npt.NDArray[np.float64],
     dz: float,
-) -> list[npt.NDArray[np.float64]]: # TODO: tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Resample temperature profiles into a required number of data points/vertical grid"""
 
     flinear = interp1d(z_in, T_in)
@@ -39,7 +39,7 @@ def rsmpl(
     z_out = np.arange(0, int(max(z_in))+dz, dz)
     T_out = flinear(z_out)
 
-    return [T_out, z_out]
+    return (T_out, z_out)
 
 
 # ----------------------------------------------------------------------
@@ -54,4 +54,19 @@ def Timer(
     finally:
         elapsed = time.perf_counter() - counter
 
-        sys.stdout.write("{}: {}\n".format(header or "Timer", elapsed))
+        seconds_per_hour = 60 * 60
+
+        hours = int(elapsed / seconds_per_hour)
+        elapsed -= hours * seconds_per_hour
+
+        minutes = int(elapsed / 60)
+        elapsed -= minutes * 60
+
+        sys.stdout.write(
+            "{}{}:{:02d}:{:.02f}\n".format(
+                "{}:".format(header) if header else "",
+                hours,
+                minutes,
+                elapsed,
+            ),
+        )
