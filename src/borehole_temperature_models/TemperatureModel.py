@@ -43,7 +43,7 @@ class TemperatureModel(object):
         a_sim: list[float],                 # Accumulation history a(t)
         G: float,                           # Geothermal heat flux
     ) -> "TemperatureModel":
-        # TODO: Assert valid parameters
+        # TODO (dave.brownell): Assert valid parameters
 
         Hm = min(Hi_sim)
 
