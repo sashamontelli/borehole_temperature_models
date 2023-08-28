@@ -1,5 +1,7 @@
-yr_to_s: float                              = 365.25*24*60*60 # Seconds in a year
-dt_years: int                               = 1 # TODO: Is this a param?
+yr_to_s: float                              = 365.25 * 24 * 60 * 60         # Seconds in a year
+
+# TODO (dave.brownell): This value is a parameter and should be removed from this file.
+dt_years: int                               = 1
 dt: float                                   = dt_years * yr_to_s
 
 c_i: float                                  = 2e3                           # Head capacity of ice

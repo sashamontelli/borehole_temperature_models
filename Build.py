@@ -63,6 +63,7 @@ def Package(
 @app.command("Test", no_args_is_help=False)
 def Test(
     code_coverage: bool=typer.Option(False, "--code-coverage", help="Run tests with code coverage information."),
+    benchmark: bool=typer.Option(False, "--benchmark", help="Run benchmark tests."),
     min_coverage: Optional[float]=typer.Option(None, "--min-coverage", min=0.0, max=100.0, help="Fail if code coverage percentage is less than this value."),
     verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
 ) -> None:
@@ -81,7 +82,8 @@ def Test(
     sys.stdout.write("Testing...")
     sys.stdout.flush()
 
-    command_line = 'pytest {}src/tests'.format(
+    command_line = 'pytest {}{} src/tests'.format(
+        "--benchmark-skip" if not benchmark else "",
         "" if not code_coverage else "--cov=borehole_temperature_models --cov-fail-under={} ".format(min_coverage),
     )
 
@@ -155,7 +157,9 @@ def Publish(
 
     dist_dir = this_dir / "dist"
     if not dist_dir.is_dir():
-        raise Exception("The distribution directory '{}' does not exist. Please run this script with the 'Build' argument to create it.\n")
+        raise Exception(
+            "The distribution directory '{}' does not exist. Please run this script with the 'Build' argument to create it.\n".format(dist_dir),
+        )
 
     # Publish
     repository_url = "https://upload.PyPi.org/legacy/" if production else "https://test.PyPi.org/legacy/"

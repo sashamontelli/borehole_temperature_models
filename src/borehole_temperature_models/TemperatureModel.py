@@ -1,10 +1,10 @@
 import base64
 import json
 
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar, field
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -24,7 +24,6 @@ class TemperatureModel(object):
     # ----------------------------------------------------------------------
     # |  Data
     Tmeasured: npt.NDArray[np.float64]
-    z: npt.NDArray[np.float64]
     Tvar_H_Tmatrix: npt.NDArray[np.float64]
     zvar_H_Tmatrix: npt.NDArray[np.float64]
 
@@ -44,204 +43,50 @@ class TemperatureModel(object):
         a_sim: list[float],                 # Accumulation history a(t)
         G: float,                           # Geothermal heat flux
     ) -> "TemperatureModel":
-        # TODO: Assert valid parameters
+        # TODO (dave.brownell): Assert valid parameters
 
-        #### Defining spatial and temporal domains / resolution
-        Hm = min(Hi_sim)  # Taking the minimum value of thickness history for domain calculation
-        zi = np.linspace(0, Hm, int((Hm)/dz) + 1)  # Space calculation domain for ice
-        dzr = dz  # Space resolution for bedrock
-        zr = np.linspace(-Hr, 0, int(Hr/dz) + 1) #  Space calculation domain for bedrock
-        l = len(zr)  # Index for ice-bed interface to be used in the loop calculations
-        Lzi = len(zi) #  Number of elements in space domain for ice
-        z = np.concatenate((zr[:-1],zi))  #  Merging space domains for ice and bedrock into one single unified space domain
-        Lz = len(z) # Calculating the number of nodes in the unified space domain
+        Hm = min(Hi_sim)
 
-        Tvar_H_matrix = np.zeros((Lz,int(t_forcing_years))) # Preparing temperature matrix for each step of temperature calculations
-        zvar_H_matrix = np.zeros((Lz,int(t_forcing_years))) # Preparing depth matrix for each step of temperature calculations
-
-        #### Interpolating time-variable forcing vectors
-
-        time_sim_T = np.linspace(1, int(t_forcing_years), num=len(T_sim))  # Creating an evenly spaced time vector for input surface temperature vector
-        time_sim_Hi = np.linspace(1, int(t_forcing_years), num=len(Hi_sim)) # Creating an evenly spaced time vector for input thickness vector
-        time_sim_a = np.linspace(1, int(t_forcing_years), num=len(a_sim)) # Creating an evenly spaced time vector for input accumulation vector
         tmnew = np.linspace(1, t_forcing_years, num = int(t_forcing_years), endpoint=True) # Creating a uniform time vector with 1-year spacing
-        f = interp1d(time_sim_T, T_sim) # Preparing interpolation function
-        facc = interp1d(time_sim_a, a_sim) # Preparing interpolation function
-        fthk = interp1d(time_sim_Hi, Hi_sim) # Preparing interpolation function
 
-        thkhistory = fthk(tmnew) # Interpolating thickness vector over the new time vector
-        temphistory = f(tmnew) # Interpolating surface temperature vector over the new time vector
-        acchistory_yr = facc(tmnew) # Interpolating accumulation vector over the new time vector
-
-        acchistory = acchistory_yr / Constants.yr_to_s # Converting accumulation vector from m/yr to m/s
-
-        a_steady = acchistory[0] # Taking the first value of the accumulation vector for steady state profile calculation
-        Ts_surf_steady = temphistory[0] # Taking the first value of the temperature vector for steady state profile calculation
-        Ts = -z*0 + Ts_surf_steady # Creating the initial temperature vector prior to the steady state profle calculation
-
-        #### Defining time before ungrounding/grounding events
-
-        t_before_ungrounding = int(t_forcing_years) - int(t_ungrounding) - int(t_grounding) # Defining the time before the ungrounding
-        t_before_grounding =  int(t_forcing_years) - int(t_grounding)  # Defining the time before the grounding
-
-        ##################################################################################################################
-
-        # Start of loop iterations
-
-        ### Grounded ice steady state T profile with constant ice thickness:
-
-        for _ in range(0, int(t_steady_years_total)):
-
-            Hi = thkhistory[0]  # Taking the first value of thickness history for steady state calculation
-            zi = np.linspace(0, Hi, Lzi)  #  Space calculation domain for ice of initial thickness
-            dz = Hi/Lzi  # Space resolution for ice column
-            z = np.concatenate((zr[:-1],zi))  #  Merging space domains for ice and bedrock into one single unified space domain
-
-
-            # Grounded ice vertical velocity profile after Lliboutry (1979)
-
-            dws = a_steady
-            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
-            ws = -dws * wzt
-
-            # Advection-diffusion temperature calculation above ice-rock interface
-
-            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
-            Ts[-1] = Ts_surf_steady # Temperature forcing is constant and equals the first value of the input surface temperature vector
-
-            # Diffusion temperature calculation below ice-rock interface
-
-            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
-
-
-        ### Grounded ice T profile with time-variable forcings:
-
-        for j in range(0, int(t_before_ungrounding)):
-            # TODO: This code isn't invoked in the standard tests; create new test cases
-
-            #  Introducing time-variable ice thickness and recalculating ice column mesh grid at each step
-
-            Hi = thkhistory[j]
-            zi = np.linspace(0, Hi, Lzi)
-            dz = Hi/Lzi
-            z = np.concatenate((zr[:-1],zi))
-
-            #  Interpolating temperature profile at a previous time step on to the new(current) ice column grid
-
-            zint = np.linspace(0, thkhistory[j-1], Lzi)
-            s = InterpolatedUnivariateSpline(zint, Ts[l-1:], k=1)
-
-            Ts[l-1:] = s(zi)
-
-
-            # Grounded ice vertical velocity profile after Lliboutry (1979)
-
-            dws = acchistory[j] - ((thkhistory[j] - thkhistory[j - 1]) / Constants.dt); # When thickness is variable through time
-            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
-            ws = -dws * wzt
-
-            # Advection-diffusion temperature calculation above ice-rock interface
-
-            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
-            Ts[-1] = temphistory[j] # Temperature forcing equals value of the imported surface temperature vector at each point in time
-
-            # Diffusion temperature calculation below ice-rock interface
-
-            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
-
-
-            # Recording the results into the temperature and depth matrixes
-
-            Tvar_H_matrix[:,j] = Ts
-            zvar_H_matrix[:,j] = z
-
-
-        ### Introduce ungrounding event:
-
-        for jj in range(0, int(t_ungrounding)):
-
-
-            #  Recalculating ice column space domain based on thickness at each step
-
-            Hi = thkhistory[jj+t_before_ungrounding]
-            zi = np.linspace(0, Hi, Lzi)
-            dz = Hi/Lzi
-            z = np.concatenate((zr[:-1],zi))
-
-            #  Interpolating temperature profile at a previous time step on to the new(current) ice column grid
-
-            zint = np.linspace(0, thkhistory[jj+t_before_ungrounding-1], Lzi)
-            s = InterpolatedUnivariateSpline(zint, Ts[l-1:], k=1)
-            Ts[l-1:] = s(zi)
-
-
-            # Ice shelf vertical velocity profile (linear function)
-
-            w = -np.linspace(acchistory[jj+t_before_ungrounding],acchistory[jj+t_before_ungrounding],Lzi) # In this case, vertical velocity is constant, and accumulation rate and basal melt/freeze rate are in balance, following Jenkins and Holland (1999). It could be modified to the one where velocity varies linearly from the surface to the base of the ice shelf.
-
-            # Advection-diffusion temperature calculation above ice-rock interface
-
-            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(w[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
-            Ts[-1] = temphistory[jj+t_before_ungrounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
-
-            Ts[l-1] = -1.89 - 7.53e-4*Hi # Empirically-derived, thickness-dependent seawater freezing point
-
-            # Diffusion temperature calculation below ice-rock interface
-
-            Ts[1:l-1] = Ts[1:l-1] + Constants.dt*Constants.alpha_r*(Ts[2:l]-2*Ts[1:l-1]+Ts[0:l-2])/dzr**2
-            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
-
-
-            # Recording the results into the temperature and depth matrixes
-
-            Tvar_H_matrix[:,jj+t_before_ungrounding] = Ts
-            zvar_H_matrix[:,jj+t_before_ungrounding] = z
-
-
-        ### Introduce grounding event:
-
-        for jjj in range(0, int(t_grounding)):
-
-            Hi = thkhistory[jjj+t_before_grounding]
-            zi = np.linspace(0, Hi, Lzi)
-            dz = Hi/Lzi
-            z = np.concatenate((zr[:-1],zi))
-
-            #  Interpolating previous temperature profile on to the new ice column space domain
-
-            zint = np.linspace(0, thkhistory[jjj+t_before_grounding-1], Lzi)
-            s = InterpolatedUnivariateSpline(zint, Ts[l-1:], k=1)
-            Ts[l-1:] = s(zi)
-
-
-            # Grounded ice vertical velocity profile
-
-            dws = acchistory[jjj+t_before_grounding] - ((thkhistory[jjj+t_before_grounding] - thkhistory[jjj+t_before_grounding - 1]) / Constants.dt) # When thickness is variable through time
-            wzt = (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
-            ws = -dws * wzt
-
-            # Advection-diffusion temperature calculation above ice-rock interface
-
-            Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
-            Ts[-1] = temphistory[jjj+t_before_grounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
-
-            # Diffusion temperature calculation below ice-rock interface
-
-            Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
-            Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
-
-
-            # Recording the results into the temperature and depth matrixes
-
-            Tvar_H_matrix[:,jjj+t_before_grounding] = Ts
-            zvar_H_matrix[:,jjj+t_before_grounding] = z
-
-
-            # Recording all of the results into the temperature-depth profile tuple that contains all calculations at each step of the simulation
-
-        return cls(Ts, z, Tvar_H_matrix, zvar_H_matrix)
+        calculator = _Calculator(
+            dz,
+            G,
+            int(t_steady_years_total),
+            int(t_forcing_years),
+            int(t_ungrounding),
+            int(t_grounding),
+            zi=np.linspace(0, Hm, int((Hm) / dz) + 1),
+            zr=np.linspace(-Hr, 0, int(Hr / dz) + 1),
+            temphistory=(
+                # Interpolating surface temperature vector over the new time vector
+                interp1d(
+                    np.linspace(1, int(t_forcing_years), len(T_sim)),  # Creating an evenly spaced time vector for input surface temperature vector,
+                    T_sim,
+                )(tmnew)
+            ),
+            thkhistory=(
+                # Interpolating thickness vector over the new time vector
+                interp1d(
+                    np.linspace(1, int(t_forcing_years), len(Hi_sim)), # Creating an evenly spaced time vector for input thickness vector,
+                    Hi_sim,
+                )(tmnew)
+            ),
+            acchistory=(
+                # Interpolating accumulation vector over the new time vector
+                interp1d(
+                    np.linspace(1, int(t_forcing_years), len(a_sim)), # Creating an evenly spaced time vector for input accumulation vector,
+                    a_sim,
+                )(tmnew) / Constants.yr_to_s
+            ),
+        )
+
+        calculator.Loop1()
+        calculator.Loop2()
+        calculator.Loop3()
+        calculator.Loop4()
+
+        return calculator.CreateTemperatureModel()
 
     # ----------------------------------------------------------------------
     @classmethod
@@ -284,7 +129,6 @@ class TemperatureModel(object):
         if version == "0.1.0":
             return TemperatureModel(
                 ConvertArray(GetValue("Tmeasured")),
-                ConvertArray(GetValue("z")),
                 ConvertArray(GetValue("Tvar_H_Tmatrix")),
                 ConvertArray(GetValue("zvar_H_Tmatrix")),
             )
@@ -295,7 +139,6 @@ class TemperatureModel(object):
     def __post_init__(self):
         for attribute_name in [
             "Tmeasured",
-            "z",
             "Tvar_H_Tmatrix",
             "zvar_H_Tmatrix",
         ]:
@@ -326,7 +169,6 @@ class TemperatureModel(object):
                 {
                     "version": "0.1.0",
                     "Tmeasured": ConvertArray(self.Tmeasured),
-                    "z": ConvertArray(self.z),
                     "Tvar_H_Tmatrix": ConvertArray(self.Tvar_H_Tmatrix),
                     "zvar_H_Tmatrix": ConvertArray(self.zvar_H_Tmatrix),
                 },
@@ -360,7 +202,6 @@ class TemperatureModel(object):
 
         for attribute_name in [
             "Tmeasured",
-            "z",
             "Tvar_H_Tmatrix",
             "zvar_H_Tmatrix",
         ]:
@@ -368,3 +209,390 @@ class TemperatureModel(object):
                 return False
 
         return True
+
+
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+def Lliboutry(
+    zi: npt.NDArray[np.float64],
+    Hi: float,
+) -> Any:
+    return (1 - (((Constants.n + 2) / (Constants.n + 1)) * (1 - zi / Hi)) + (1 / (Constants.n + 1)) * np.power((1 - zi / Hi), (Constants.n + 2)))
+
+
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+@dataclass
+class _Calculator(object):
+    # ----------------------------------------------------------------------
+    # |  Data
+    dzr: int
+    G: float
+
+    t_steady_years_total: int
+    t_forcing_years: InitVar[int]
+    t_ungrounding: int
+    t_grounding: int
+
+    zi: npt.NDArray[np.float64]
+    zr: npt.NDArray[np.float64]
+
+    temphistory: npt.NDArray[np.float64]
+    thkhistory: npt.NDArray[np.float64]
+    acchistory: npt.NDArray[np.float64]
+
+    _len_zi: int                            = field(init=False)
+    _len_zr: int                            = field(init=False)
+
+    _t_before_ungrounding: int              = field(init=False)
+    _t_before_grounding: int                = field(init=False)
+
+    _Ts: npt.NDArray[np.float64]            = field(init=False)
+
+    _Tvar_H_matrix: npt.NDArray[Any]        = field(init=False)
+    _zvar_H_matrix: npt.NDArray[Any]        = field(init=False)
+
+    # ----------------------------------------------------------------------
+    # |  Methods
+    def __post_init__(
+        self,
+        t_forcing_years: int,
+    ):
+        len_zi = len(self.zi)
+        len_zr = len(self.zr)
+
+        t_before_ungrounding = t_forcing_years - self.t_ungrounding - self.t_grounding
+        t_before_grounding =  t_forcing_years - self.t_grounding  # Defining the time before the grounding
+
+        Ts = np.full(len_zi + len_zr - 1, self.temphistory[0])
+
+        Tvar_H_matrix = np.zeros((len(Ts), t_forcing_years)) # Preparing temperature matrix for each step of temperature calculations
+        zvar_H_matrix = np.zeros((len(Ts), t_forcing_years)) # Preparing depth matrix for each step of temperature calculations
+
+        # Commit values
+        self._len_zi = len_zi
+        self._len_zr = len_zr
+
+        self._t_before_ungrounding = t_before_ungrounding
+        self._t_before_grounding = t_before_grounding
+
+        self._Ts = Ts
+        self._Tvar_H_matrix = Tvar_H_matrix
+        self._zvar_H_matrix = zvar_H_matrix
+
+    # ----------------------------------------------------------------------
+    def CreateTemperatureModel(self) -> TemperatureModel:
+        return TemperatureModel(
+            self._Ts,
+            self._Tvar_H_matrix,
+            self._zvar_H_matrix,
+        )
+
+    # ----------------------------------------------------------------------
+    def Loop1(self) -> None:
+        dz = self.thkhistory[0] / self._len_zi
+        ws = (
+            -self.acchistory[0]
+            * Lliboutry(
+                np.linspace(0, self.thkhistory[0], self._len_zi),
+                self.thkhistory[0],
+            )
+        )
+
+        # ----------------------------------------------------------------------
+        def PreLoopCalc(
+            loop_index: int,
+        ) -> tuple[
+            float,
+            npt.NDArray[np.float64],
+            Optional[npt.NDArray[np.float64]],
+        ]:
+            return dz, ws, None
+
+        # ----------------------------------------------------------------------
+        def IntraLoopCallback(
+            loop_index: int,
+        ) -> None:
+            self._Ts[-1] = self.temphistory[0]
+
+        # ----------------------------------------------------------------------
+
+        self._LoopImpl(
+            self.t_steady_years_total,
+            PreLoopCalc,
+            IntraLoopCallback,
+            update_matrix_index_offset_or_post_loop_callback=None,
+        )
+
+    # ----------------------------------------------------------------------
+    def Loop2(self) -> None:
+        # ----------------------------------------------------------------------
+        def PreLoopCalc(
+            loop_index: int,
+        ) -> tuple[
+            float,
+            npt.NDArray[np.float64],
+            Optional[npt.NDArray[np.float64]],
+        ]:
+            Hi = self.thkhistory[loop_index]
+
+            new_zi = np.linspace(0, Hi, self._len_zi)
+            z = np.concatenate((self.zr[:-1], new_zi))
+
+            #  Interpolating temperature profile at a previous time step on to the new(current) ice column grid
+            self._Ts[self._len_zr - 1:] = InterpolatedUnivariateSpline(
+                np.linspace(0, self.thkhistory[loop_index - 1], self._len_zi),
+                self._Ts[self._len_zr - 1:],
+                k=1,
+            )(new_zi)
+
+            # Grounded ice vertical velocity profile after Lliboutry (1979)
+
+            dws = self.acchistory[loop_index] - ((self.thkhistory[loop_index] - self.thkhistory[loop_index - 1]) / Constants.dt) # When thickness is variable through time
+
+            return (
+                Hi / self._len_zi,  # type: ignore
+                # When thickness is variable through time
+                -dws * Lliboutry(new_zi, Hi),  # type: ignore
+                z,
+            )
+
+        # ----------------------------------------------------------------------
+        def IntraLoopCallback(
+            loop_index: int,
+        ) -> None:
+            # Temperature forcing equals value of the imported surface temperature vector at each point in time
+            self._Ts[-1] = self.temphistory[loop_index]
+
+        # ----------------------------------------------------------------------
+        def PostLoopCallback(
+            loop_index: int,
+            z: npt.NDArray[np.float64],
+        ) -> None:
+            self._Tvar_H_matrix[:, loop_index] = self._Ts
+            self._zvar_H_matrix[:, loop_index] = z
+
+        # ----------------------------------------------------------------------
+
+        self._LoopImpl(
+            self._t_before_ungrounding,
+            PreLoopCalc,
+            IntraLoopCallback,
+            update_matrix_index_offset_or_post_loop_callback=PostLoopCallback,
+        )
+
+    # ----------------------------------------------------------------------
+    def Loop3(self) -> None:
+        Hi: Optional[float] = None
+
+        # ----------------------------------------------------------------------
+        def PreLoopCalc(
+            loop_index: int,
+        ) -> tuple[
+            float,
+            npt.NDArray[np.float64],
+            Optional[npt.NDArray[np.float64]],
+        ]:
+            nonlocal Hi
+
+            Hi = self.thkhistory[loop_index + self._t_before_ungrounding]
+
+            new_zi = np.linspace(0, Hi, self._len_zi)  # type: ignore
+            z = np.concatenate((self.zr[:-1], new_zi))
+
+            #  Interpolating temperature profile at a previous time step on to the new(current) ice column grid
+            self._Ts[self._len_zr - 1:] = InterpolatedUnivariateSpline(
+                np.linspace(0, self.thkhistory[loop_index + self._t_before_ungrounding - 1], self._len_zi),
+                self._Ts[self._len_zr - 1:],
+                k=1,
+            )(new_zi)
+
+            # Ice shelf vertical velocity profile (linear function)
+
+            return (
+                Hi / self._len_zi,  # type: ignore
+                # In this case, vertical velocity is constant, and accumulation rate and basal melt/freeze rate are in balance, following Jenkins and Holland (1999). It could be modified to the one where velocity varies linearly from the surface to the base of the ice shelf.
+                -np.linspace(
+                    self.acchistory[loop_index + self._t_before_ungrounding],
+                    self.acchistory[loop_index + self._t_before_ungrounding],
+                    self._len_zi,
+                ),
+                z,
+            )
+
+        # ----------------------------------------------------------------------
+        def IntraLoopCallback(
+            loop_index: int,
+        ) -> None:
+            self._Ts[-1] = self.temphistory[loop_index + self._t_before_ungrounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
+
+            self._Ts[self._len_zr - 1] = -1.89 - 7.53e-4 * Hi #  type: ignore # Empirically-derived, thickness-dependent seawater freezing point
+
+        # ----------------------------------------------------------------------
+
+        self._LoopImpl(
+            self.t_ungrounding,
+            PreLoopCalc,
+            IntraLoopCallback,
+            calculation_offset=1,
+            update_matrix_index_offset_or_post_loop_callback=self._t_before_ungrounding,
+        )
+
+    # ----------------------------------------------------------------------
+    def Loop4(self) -> None:
+        # ----------------------------------------------------------------------
+        def PreLoopCalc(
+            loop_index: int,
+        ) -> tuple[
+            float,
+            npt.NDArray[np.float64],
+            Optional[npt.NDArray[np.float64]],
+        ]:
+            Hi = self.thkhistory[loop_index + self._t_before_grounding]
+
+            new_zi = np.linspace(0, Hi, self._len_zi)
+            z = np.concatenate((self.zr[:-1], new_zi))
+
+            #  Interpolating previous temperature profile on to the new ice column space domain
+            self._Ts[self._len_zr - 1:] = InterpolatedUnivariateSpline(
+                np.linspace(0, self.thkhistory[loop_index + self._t_before_grounding - 1], self._len_zi),
+                self._Ts[self._len_zr - 1:],
+                k=1,
+            )(new_zi)
+
+            # Grounded ice vertical velocity profile
+
+            dws = self.acchistory[loop_index + self._t_before_grounding] - ((self.thkhistory[loop_index + self._t_before_grounding] - self.thkhistory[loop_index + self._t_before_grounding - 1]) / Constants.dt) # When thickness is variable through time
+
+            return (
+                Hi / self._len_zi,
+                -dws * Lliboutry(new_zi, Hi),
+                z,
+            )
+
+        # ----------------------------------------------------------------------
+        def IntraLoopCallback(
+            loop_index: int,
+        ) -> None:
+            self._Ts[-1] = self.temphistory[loop_index + self._t_before_grounding] # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
+
+        # ----------------------------------------------------------------------
+
+        self._LoopImpl(
+            self.t_grounding,
+            PreLoopCalc,
+            IntraLoopCallback,
+            update_matrix_index_offset_or_post_loop_callback=self._t_before_grounding,
+        )
+
+    # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    def _LoopImpl(
+        self,
+        num_iterations: int,
+        pre_loop_calc_func: Callable[
+            [int],
+            tuple[
+                float,                                  # dz
+                npt.NDArray[np.float64],                # ws
+                Optional[npt.NDArray[np.float64]],      # z
+            ],
+        ],
+        intra_loop_callback_func: Callable[[int], None],
+        *,
+        calculation_offset: int=0,
+        update_matrix_index_offset_or_post_loop_callback: Union[
+            None,
+            int,
+            Callable[
+                [
+                    int,                                # loop_index
+                    npt.NDArray[np.float64],            # z
+                ],
+                None,
+            ],
+        ],
+    ) -> None:
+        if num_iterations == 0:
+            return
+
+        if callable(update_matrix_index_offset_or_post_loop_callback):
+            post_loop_callback_func = update_matrix_index_offset_or_post_loop_callback
+        elif isinstance(update_matrix_index_offset_or_post_loop_callback, int):
+            update_matrix_index_offset = update_matrix_index_offset_or_post_loop_callback
+
+            # ----------------------------------------------------------------------
+            def UpdateMatrixValues(
+                loop_index: int,
+                z: npt.NDArray[np.float64],
+            ) -> None:
+                self._Tvar_H_matrix[:, loop_index + update_matrix_index_offset] = self._Ts
+                self._zvar_H_matrix[:, loop_index + update_matrix_index_offset] = z
+
+            # ----------------------------------------------------------------------
+
+            post_loop_callback_func = UpdateMatrixValues
+        else:
+            post_loop_callback_func = lambda *args, **kwargs: None
+
+        # Example Loop views given:
+        #
+        #   `len_zr` == 4
+        #   `calculation_offset` == 0
+        #
+        #                 len_zr
+        #                   |
+        #                   V
+        # | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+        #                   -----------------: view1
+        #                       -----------------: view2
+        #               -----------------: view3
+        #       ---------: view4
+        #           ---------: view5
+        #   ---------: view6
+
+        view1 = self._Ts[self._len_zr:-1]
+        view2 = self._Ts[self._len_zr + 1:]
+        view3 = self._Ts[self._len_zr - 1:-2]
+        view4 = self._Ts[1:self._len_zr - calculation_offset]
+        view5 = self._Ts[2:self._len_zr + 1 - calculation_offset]
+        view6 = self._Ts[:self._len_zr - 1 - calculation_offset]
+
+        drz_squared = self.dzr ** 2
+
+        post_loop_delta_value = (self.G / Constants.k_r * self.dzr)
+
+        z: Optional[npt.NDArray[np.float64]] = None
+
+        for loop_index in range(num_iterations):
+            dz, ws, z = pre_loop_calc_func(loop_index)
+
+            view1 += (
+                Constants.dt
+                * (
+                    Constants.alpha_i
+                    * (view2 - 2 * view1 + view3)
+                    / dz ** 2
+                    - np.multiply(
+                        ws[1:-1],
+                        (view2 - view3) / (dz * 2),
+                    )
+                )
+            )
+
+            # Perform loop-specific updates in the calling function
+            intra_loop_callback_func(loop_index)
+
+            view4 += (
+                Constants.dt
+                * Constants.alpha_r
+                * (view5 - 2 * view4 + view6)
+                / drz_squared
+            )
+
+            self._Ts[0] = self._Ts[1] + post_loop_delta_value
+
+            post_loop_callback_func(loop_index, z)  # type: ignore

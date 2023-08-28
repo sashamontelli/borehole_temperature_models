@@ -16,7 +16,6 @@ def ModelMeasured(
     G: float,
     a_yr: float,
     T_sim: float,
-    z: npt.NDArray[np.float64],
     *,
     Hr: float=500.0,
     Hend: float=470.0,

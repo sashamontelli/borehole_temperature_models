@@ -5,3 +5,6 @@ dist
 src/*.egg-info
 
 *-checkpoint.ipynb
+.ipynb_checkpoints/*
+
+*.pickle
