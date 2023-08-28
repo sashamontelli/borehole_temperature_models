@@ -26,7 +26,7 @@ keywords = [
 
 # https://pypi.org/classifiers/
 classifiers = [
-    "Development Status :: 1 - Planning", # TODO (dave.brownell): Update this
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
