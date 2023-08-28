@@ -1,9 +1,4 @@
 yr_to_s: float                              = 365.25 * 24 * 60 * 60         # Seconds in a year
-
-# TODO (dave.brownell): This value is a parameter and should be removed from this file.
-dt_years: int                               = 1
-dt: float                                   = dt_years * yr_to_s
-
 c_i: float                                  = 2e3                           # Head capacity of ice
 c_r: float                                  = 7.9e2                         # Heat capacity of basal rock
 k_i: float                                  = 2.3                           # Thermal conductivity of ice

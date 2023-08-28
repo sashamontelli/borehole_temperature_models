@@ -1,7 +1,7 @@
 import sys
 
 from multiprocessing import Pool
-from typing import Callable, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,7 @@ DEFAULT_NUM_BURNIN_ITERATIONS               = 100
 
 # ----------------------------------------------------------------------
 def Simulate(
+    dt_years: float,
     z: npt.NDArray,
     Tmeasured: npt.NDArray,
     Terr: float,
@@ -49,6 +50,7 @@ def Simulate(
         num_dimensions = len(p0[0])
 
         controller = _SamplerController(
+            dt_years,
             h_constraints,
             grounding_constraints,
             G_constraints,
@@ -93,6 +95,7 @@ class _SamplerController(object):
     # ----------------------------------------------------------------------
     def __init__(
         self,
+        dt_years: float,
         h_constraints: tuple[float, float],
         grounding_constraints: tuple[int, int],
         G_constraints: tuple[float, float],
@@ -105,6 +108,7 @@ class _SamplerController(object):
         assert yr_constraints[0] <= yr_constraints[1]
         assert sim_constraints[0] <= sim_constraints[1]
 
+        self.dt_years                       = dt_years
         self.h_constraints                  = h_constraints
         self.grounding_constraints          = grounding_constraints
         self.G_constraints                  = G_constraints
@@ -132,7 +136,7 @@ class _SamplerController(object):
         y: npt.NDArray,
         yerr: float,
     ) -> np.float64:
-        return -0.5 * np.sum(((y - ModelMeasured(*data)) / yerr) ** 2)
+        return -0.5 * np.sum(((y - ModelMeasured(self.dt_years, *data)) / yerr) ** 2)
 
     # ----------------------------------------------------------------------
     def lnprior(
