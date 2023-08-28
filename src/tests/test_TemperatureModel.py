@@ -21,7 +21,7 @@ _data_dir                                   = Path(__file__).parent / "data"
 # ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 def test_Create1() -> None:
-    model = TemperatureModel.Create([360,470], 500, 10, 5e4, 1e4, 1e4, 7e2, [-24.3, -24.3], [0.11, 0.11], 950e-4)
+    model = TemperatureModel.Create(1, [360,470], 500, 10, 5e4, 1e4, 1e4, 7e2, [-24.3, -24.3], [0.11, 0.11], 950e-4)
 
     last_known_good = TemperatureModel.Load(_data_dir / "TemperatureModel" / "Create1.json")
 
@@ -34,7 +34,7 @@ def test_Create1() -> None:
 
 # ----------------------------------------------------------------------
 def test_Create2() -> None:
-    model = TemperatureModel.Create([400,470], 500, 10, 5e4, 1e4, 1e4, 2e3, [-30, -25], [0.2, 0.1], 700e-4)
+    model = TemperatureModel.Create(1, [400,470], 500, 10, 5e4, 1e4, 1e4, 2e3, [-30, -25], [0.2, 0.1], 700e-4)
 
     last_known_good = TemperatureModel.Load(_data_dir / "TemperatureModel" / "Create2.json")
 
@@ -68,6 +68,10 @@ def test_ModelDataFile(
 ):
     with Path(data_filename).open("rb") as f:
         content = pickle.load(f)
+
+    # `dt_years` was converted to a parameter after all of the data was serialized. Fortunately,
+    # the data was a serialized with a value of 1. Add it here now.
+    content["input"]["dt_years"] = 1
 
     original_model = TemperatureModel(
         content["output"]["Tmeasured"],

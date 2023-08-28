@@ -11,6 +11,7 @@ from borehole_temperature_models import Utilities
 
 # ----------------------------------------------------------------------
 def ModelMeasured(
+    dt_years: float,
     Hinitial: float,
     t_grounding: float,
     G: float,
@@ -21,6 +22,8 @@ def ModelMeasured(
     Hend: float=470.0,
     dz: float=10.0,
 ) -> npt.NDArray[np.float64]:
+    dt = dt_years * Constants.yr_to_s
+
     zi = np.linspace(0, Hinitial, int(Hinitial/dz) + 1)  # Space calculation domain for ice
     zr = np.linspace(-Hr, 0, int(Hr/dz) + 1) #  Space calculation domain for rock
     l = len(zr)  # Index for ice-bed interface to be used in the loop calculations
@@ -59,15 +62,14 @@ def ModelMeasured(
 
         # Above ice-rock interface
 
-        Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(w[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+        Ts[l:-1] = Ts[l:-1] + dt * (Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(w[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
         Ts[-1] = Ts_surf_steady # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
 
         Ts[l-1] = -1.89 - 7.53e-4*Hi
 
-
         # Below ice-rock interface
 
-        Ts[1:l-1] = Ts[1:l-1] + Constants.dt*Constants.alpha_r*(Ts[2:l]-2*Ts[1:l-1]+Ts[0:l-2])/dzr**2
+        Ts[1:l-1] = Ts[1:l-1] + dt * Constants.alpha_r*(Ts[2:l]-2*Ts[1:l-1]+Ts[0:l-2])/dzr**2
         Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
         # Recording the result into an empty matrix for comparison
@@ -93,12 +95,12 @@ def ModelMeasured(
 
         # Temperature calculation above ice-rock interface
 
-        Ts[l:-1] = Ts[l:-1] + Constants.dt*(Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
+        Ts[l:-1] = Ts[l:-1] + dt * (Constants.alpha_i*(Ts[l+1:]-2*Ts[l:-1]+Ts[l-1:-2])/dz**2 - np.multiply(ws[1:-1],(Ts[l+1:]-Ts[l-1:-2])/(2*dz)))
         Ts[-1] = T_sim # Temperature forcing is constant and equals the first value of the imported Monte-Carlo surface temperature vectors
 
         # Temperature calculation below ice-rock interface
 
-        Ts[1:l] = Ts[1:l] + Constants.dt * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
+        Ts[1:l] = Ts[1:l] + dt   * Constants.alpha_r * (Ts[2:l+1]-2*Ts[1:l]+Ts[0:l-1])/dzr**2
         Ts[0] = Ts[1] + (G/Constants.k_r*dzr)
 
     Tx = Utilities.rsmpl(Ts[l-1:], zi, 10)[0]

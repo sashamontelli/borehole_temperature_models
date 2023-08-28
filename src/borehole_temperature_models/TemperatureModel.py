@@ -32,6 +32,7 @@ class TemperatureModel(object):
     @classmethod
     def Create(
         cls,
+        dt_years: float,
         Hi_sim: list[int],                  # Ice thickness history H(t)
         Hr: int,                            # Time-constant thickness of subglacial bedrock
         dz: int,                            # Spatial grid resolution in metres "
@@ -50,6 +51,7 @@ class TemperatureModel(object):
         tmnew = np.linspace(1, t_forcing_years, num = int(t_forcing_years), endpoint=True) # Creating a uniform time vector with 1-year spacing
 
         calculator = _Calculator(
+            dt_years * Constants.yr_to_s,
             dz,
             G,
             int(t_steady_years_total),
@@ -228,6 +230,8 @@ def Lliboutry(
 class _Calculator(object):
     # ----------------------------------------------------------------------
     # |  Data
+    dt: float
+
     dzr: int
     G: float
 
@@ -350,7 +354,7 @@ class _Calculator(object):
 
             # Grounded ice vertical velocity profile after Lliboutry (1979)
 
-            dws = self.acchistory[loop_index] - ((self.thkhistory[loop_index] - self.thkhistory[loop_index - 1]) / Constants.dt) # When thickness is variable through time
+            dws = self.acchistory[loop_index] - ((self.thkhistory[loop_index] - self.thkhistory[loop_index - 1]) / self.dt) # When thickness is variable through time
 
             return (
                 Hi / self._len_zi,  # type: ignore
@@ -464,7 +468,7 @@ class _Calculator(object):
 
             # Grounded ice vertical velocity profile
 
-            dws = self.acchistory[loop_index + self._t_before_grounding] - ((self.thkhistory[loop_index + self._t_before_grounding] - self.thkhistory[loop_index + self._t_before_grounding - 1]) / Constants.dt) # When thickness is variable through time
+            dws = self.acchistory[loop_index + self._t_before_grounding] - ((self.thkhistory[loop_index + self._t_before_grounding] - self.thkhistory[loop_index + self._t_before_grounding - 1]) / self.dt) # When thickness is variable through time
 
             return (
                 Hi / self._len_zi,
@@ -571,7 +575,7 @@ class _Calculator(object):
             dz, ws, z = pre_loop_calc_func(loop_index)
 
             view1 += (
-                Constants.dt
+                self.dt
                 * (
                     Constants.alpha_i
                     * (view2 - 2 * view1 + view3)
@@ -587,7 +591,7 @@ class _Calculator(object):
             intra_loop_callback_func(loop_index)
 
             view4 += (
-                Constants.dt
+                self.dt
                 * Constants.alpha_r
                 * (view5 - 2 * view4 + view6)
                 / drz_squared
