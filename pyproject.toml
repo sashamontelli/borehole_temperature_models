@@ -73,4 +73,4 @@ Documentation = "https://github.com/sashamontelli/borehole_temperature_models"
 Repository = "https://github.com/sashamontelli/borehole_temperature_models"
 
 [tool.setuptools.dynamic]
-version = { attr = "borehole_temperature_models.__version__" }
+version = { attr = "icetemp.__version__" }

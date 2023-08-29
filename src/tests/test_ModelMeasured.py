@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from borehole_temperature_models.ModelMeasured import ModelMeasured
+from icetemp.ModelMeasured import ModelMeasured
 
 
 # ----------------------------------------------------------------------

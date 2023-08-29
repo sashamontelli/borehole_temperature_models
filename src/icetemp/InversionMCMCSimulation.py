@@ -8,7 +8,7 @@ import numpy.typing as npt
 
 import emcee
 
-from borehole_temperature_models.ModelMeasured import ModelMeasured
+from icetemp.ModelMeasured import ModelMeasured
 
 
 # ----------------------------------------------------------------------

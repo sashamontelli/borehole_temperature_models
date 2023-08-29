@@ -5,8 +5,8 @@ import numpy.typing as npt
 
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 
-from borehole_temperature_models import Constants
-from borehole_temperature_models import Utilities
+from icetemp import Constants
+from icetemp import Utilities
 
 
 # ----------------------------------------------------------------------

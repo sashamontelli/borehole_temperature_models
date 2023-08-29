@@ -36,6 +36,15 @@ Please let us know if you have any questions or suggestions through issues.
 
 ---
 
+### Historical Naming (`icetemp` vs. `borehole_temperature_model`)
+
+The name of python package produced by this repository is `icetemp` while the name of the repository is `borehole_temperature_model`.
+
+The name `icetemp` was introduced when refactoring the code for distribution as a python package, with the goal
+of making the algorithms more accessible to other researchers. It is our hope that the name `icetemp` more clearly illustrates the functionality provided by the package and makes it easier to discover on [PyPi](https://pypi.org/search/?q=icetemp).
+
+---
+
 ### Acknowledgements
 
 Thank you to Thorsten Albrecht for sharing the PISM model outputs.

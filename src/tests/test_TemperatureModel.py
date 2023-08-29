@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from borehole_temperature_models.TemperatureModel import TemperatureModel
+from icetemp.TemperatureModel import TemperatureModel
 
 
 # ----------------------------------------------------------------------
