@@ -35,31 +35,6 @@ app                                         = typer.Typer(
 
 
 # ----------------------------------------------------------------------
-@app.command("Package", no_args_is_help=False)
-def Package(
-    additional_args: list[str]=typer.Option([], "--arg", help="Additional arguments passed to the build command."),
-    verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
-) -> None:
-    """Builds the python package."""
-
-    sys.stdout.write("Packaging...")
-    sys.stdout.flush()
-
-    result = _ExecuteCommand(
-        "python -m build{}".format(
-            "" if not additional_args else " {}".format(" ".join('"{}"'.format(arg) for arg in additional_args)),
-        ),
-    )
-
-    sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
-
-    result.RaiseOnError()
-
-    if verbose:
-        sys.stdout.write(result.output)
-
-
-# ----------------------------------------------------------------------
 @app.command("Test", no_args_is_help=False)
 def Test(
     code_coverage: bool=typer.Option(False, "--code-coverage", help="Run tests with code coverage information."),
@@ -84,7 +59,7 @@ def Test(
 
     command_line = 'pytest {}{} src/tests'.format(
         "--benchmark-skip" if not benchmark else "",
-        "" if not code_coverage else "--cov=borehole_temperature_models --cov-fail-under={} ".format(min_coverage),
+        "" if not code_coverage else "--cov=icetemp --cov-fail-under={} ".format(min_coverage),
     )
 
     result = _ExecuteCommand(command_line)
@@ -124,7 +99,7 @@ def UpdateVersion(
     sys.stdout.write("Updating source...")
     sys.stdout.flush()
 
-    init_filename = this_dir / "src" / "borehole_temperature_models" / "__init__.py"
+    init_filename = this_dir / "src" / "icetemp" / "__init__.py"
     assert init_filename.is_file(), init_filename
 
     with init_filename.open(encoding="utf-8") as f:
@@ -142,6 +117,31 @@ def UpdateVersion(
         f.write(new_content)
 
     sys.stdout.write("DONE!\n\n")
+
+
+# ----------------------------------------------------------------------
+@app.command("Package", no_args_is_help=False)
+def Package(
+    additional_args: list[str]=typer.Option([], "--arg", help="Additional arguments passed to the build command."),
+    verbose: bool=typer.Option(False, "--verbose", help="Write verbose information to the terminal."),
+) -> None:
+    """Builds the python package."""
+
+    sys.stdout.write("Packaging...")
+    sys.stdout.flush()
+
+    result = _ExecuteCommand(
+        "python -m build{}".format(
+            "" if not additional_args else " {}".format(" ".join('"{}"'.format(arg) for arg in additional_args)),
+        ),
+    )
+
+    sys.stdout.write("DONE ({})!\n\n".format(result.returncode))
+
+    result.RaiseOnError()
+
+    if verbose:
+        sys.stdout.write(result.output)
 
 
 # ----------------------------------------------------------------------

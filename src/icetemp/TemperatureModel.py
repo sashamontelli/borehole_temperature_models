@@ -11,7 +11,7 @@ import numpy.typing as npt
 
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 
-from borehole_temperature_models import Constants
+from icetemp import Constants
 
 
 # ----------------------------------------------------------------------
@@ -44,10 +44,10 @@ class TemperatureModel(object):
         a_sim: list[float],                 # Accumulation history a(t)
         G: float,                           # Geothermal heat flux
     ) -> "TemperatureModel":
-        assert dt_years > 0.0, dt_years
-        assert t_steady_years_total > 0.0, t_steady_years_total
-        assert t_ungrounding > 0.0, t_ungrounding
-        assert t_grounding > 0.0, t_grounding
+        assert dt_years >= 0.0, dt_years
+        assert t_steady_years_total >= 0.0, t_steady_years_total
+        assert t_ungrounding >= 0.0, t_ungrounding
+        assert t_grounding >= 0.0, t_grounding
 
         Hm = min(Hi_sim)
 
