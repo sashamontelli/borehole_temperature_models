@@ -1,18 +1,29 @@
-name: "[impl] Validates functionality in this repository."
+name: "[impl] Validates and Packages functionality in this repository."
 
 on:
   workflow_call:
+    inputs:
+      include_benchmarks: { type: boolean, required: true, description: "Include benchmarks when running tests." }
+      code_coverage: { type: boolean, required: true, description: "Extract code coverage metrics when running tests." }
 
 jobs:
-  _ba80c819-dbdd-44d7-a62b-785dab771a5f:
+  # ----------------------------------------------------------------------
+  # |  Test
+  _d6637bff-b27b-4b16-83d9-a828e1684e4e:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - macos-latest
           - ubuntu-latest
           - windows-latest
 
-    name: "${{ matrix.os }}"
+        python_version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+
+    name: "Test: ${{ matrix.os }}_python${{ matrix.python_version }}"
     runs-on: "${{ matrix.os }}"
 
     steps:
@@ -22,6 +33,122 @@ jobs:
         run: |-
           git config --system core.longpaths true
 
-      - name: Placeholder
+      - uses: actions/checkout@v3
+
+      - name: Setup Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install Dependencies
         run: |-
-          echo "This is a placeholder introduced because GitHub only allows the manual invocation of workflows that exist on the mainline branch. The pull request that includes this file will be merged into the mainline branch and subsequent pull requests will replace this placeholder with actual content that can be verified."
+          pip install -e ".[dev]"
+
+      - name: Create Test Command Line
+        id: test_command_line
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            return `python Build.py Test --verbose ${ ${{ inputs.include_benchmarks }} ? '--benchmark' : '' } ${ ${{ inputs.code_coverage }} ? '--code-coverage' : '' }`;
+
+      - name: Run Tests
+        run: |-
+          ${{ steps.test_command_line.outputs.result }}
+
+  # ----------------------------------------------------------------------
+  # |  Package
+  _93bf8ba3-1bb7-4ac1-9f79-cdadf17bcd94:
+    strategy:
+      matrix:
+        # Note that we don't need to include the os as the packages produced do not contain binary content.
+        os:
+          # - macos-latest
+          - ubuntu-latest
+          # - windows-latest
+
+        # Note that we only need to include a single python version for each major release as the package
+        # does not depend on minor release information.
+        python_version:
+          # - "3.9"
+          - "3.10"
+          # - "3.11"
+
+    name: "Package: ${{ matrix.os }}_python${{ matrix.python_version }}"
+    runs-on: "${{ matrix.os }}"
+    needs:
+      - _d6637bff-b27b-4b16-83d9-a828e1684e4e
+
+    steps:
+      # Ensure that windows machines support long paths
+      - name: git Long File Path Support on Windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |-
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Get all of the changes so that AutoSemVer calculates the semantic version as expected
+
+      - name: Setup Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install Dependencies
+        run: |-
+          pip install -e ".[package]"
+
+      - name: Update Version
+        run: |-
+          python Build.py UpdateVersion
+
+      - name: Create Package
+        run: |-
+          python Build.py Package
+
+      - name: Upload Package Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: dist/*
+
+  # ----------------------------------------------------------------------
+  # |  Validate Package
+  _719b11d3-2c81-4948-ad99-822d37d55afe:
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+        python_version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+
+    name: "Validate Package: ${{ matrix.os }}_python${{ matrix.python_version }}"
+    runs-on: "${{ matrix.os }}"
+    needs:
+      - _93bf8ba3-1bb7-4ac1-9f79-cdadf17bcd94
+
+    steps:
+      - name: Setup Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Download Package Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: artifacts
+
+      - name: Install Package
+        run: |-
+          pip install --find-links=artifacts/ icetemp
+
+      - name: Run Test
+        run: |-
+          python -c "from icetemp.TemperatureModel import TemperatureModel; model = TemperatureModel.Create(1, [360,470], 500, 10, 5e4, 1e4, 1e4, 7e2, [-24.3, -24.3], [0.11, 0.11], 950e-4); print(model)"

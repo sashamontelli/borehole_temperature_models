@@ -58,7 +58,7 @@ def Test(
     sys.stdout.flush()
 
     command_line = 'pytest {}{} src/tests'.format(
-        "--benchmark-skip" if not benchmark else "",
+        "--benchmark-skip " if not benchmark else "",
         "" if not code_coverage else "--cov=icetemp --cov-fail-under={} ".format(min_coverage),
     )
 
@@ -85,8 +85,10 @@ def UpdateVersion(
     sys.stdout.write("Calculating version...")
     sys.stdout.flush()
 
-    command_line = 'docker run --rm -v "{}:/local" dbrownell/autosemver:0.6.0 --path /local --no-branch-name --no-metadata --quiet'.format(this_dir)
+    command_line = 'docker pull dbrownell/autosemver:0.6.3'
+    _ExecuteCommand(command_line).RaiseOnError()
 
+    command_line = 'docker run --rm -v "{}:/local" dbrownell/autosemver:0.6.3 --path /local --no-branch-name --no-metadata --quiet'.format(this_dir)
     result = _ExecuteCommand(command_line)
 
     sys.stdout.write("DONE ({})!\n\n".format(result.returncode))

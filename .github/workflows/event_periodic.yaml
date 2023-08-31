@@ -7,5 +7,8 @@ on:
 
 jobs:
   _9c21c271-8c8f-4cc9-9827-0034f1132605:
-    name: "Validate (${{ github.ref_name }})"
+    name: "Validate: ${{ github.ref_name }}"
     uses: ./.github/workflows/callable_validate.yaml
+    with:
+      include_benchmarks: false
+      code_coverage: false

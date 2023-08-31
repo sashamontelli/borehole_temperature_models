@@ -199,9 +199,9 @@ class TemperatureModel(object):
         equality_func: Optional[Callable[[npt.NDArray[np.float64], npt.NDArray[np.float64]], bool]] = None
 
         if allow_tolerance:
-            equality_func = lambda a, b: np.array_equal(a, b, equal_nan=True)
+            equality_func = np.allclose
         else:
-            equality_func = lambda a, b: np.allclose(a, b)
+            equality_func = lambda a, b: np.array_equal(a, b, equal_nan=True)
 
         assert equality_func is not None
 
@@ -210,7 +210,10 @@ class TemperatureModel(object):
             "Tvar_H_Tmatrix",
             "zvar_H_Tmatrix",
         ]:
-            if not equality_func(getattr(this, attribute_name), getattr(that, attribute_name)):
+            this_value = getattr(this, attribute_name)
+            that_value = getattr(that, attribute_name)
+
+            if equality_func(this_value, that_value) is False:
                 return False
 
         return True

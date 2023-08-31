@@ -6,7 +6,22 @@ on:
     branches:
       - master
 
+# Only allow one instance at a time
+concurrency: "on_push-${{ github.ref_name }}"
+
 jobs:
   _eca4b60a-baa0-484d-965f-1f8c005681c1:
-    name: "Validate (${{ github.ref_name }})"
+    name: "Validate (with benchmarks): ${{ github.ref_name }}"
     uses: ./.github/workflows/callable_validate.yaml
+    with:
+      include_benchmarks: true
+      code_coverage: false
+
+  _c60c80c3-f86f-4fc3-b867-109c3f726140:
+    name: "Publish: ${{ github.ref_name }}"
+    uses: ./.github/workflows/callable_publish.yaml
+    with:
+      is_production: false # Set this value to true for true Continuous Deployment
+
+    needs:
+      - _eca4b60a-baa0-484d-965f-1f8c005681c1
