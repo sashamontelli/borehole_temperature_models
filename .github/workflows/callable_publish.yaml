@@ -1,10 +1,9 @@
-name: "[impl] Publishing content previously built from this repository."
+name: "[impl] Publishes content previously built from this repository."
 
 on:
   workflow_call:
     inputs:
       is_production: { type: boolean, description: "True if the script should publish to a production PyPi server, False to publish to a test server.", required: false, default: false }
-      # TODO: Need archive location
 
 jobs:
   Publish:
@@ -27,6 +26,35 @@ jobs:
     runs-on: "${{ matrix.os }}"
 
     steps:
-      - name: Placeholder
+      # Ensure that windows machines support long paths
+      - name: git Long File Path Support on Windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
         run: |-
-          echo "This is a placeholder introduced because GitHub only allows the manual invocation of workflows that exist on the mainline branch. The pull request that includes this file will be merged into the mainline branch and subsequent pull requests will replace this placeholder with actual content that can be verified."
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v3
+
+      - name: Setup Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Download Package Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: dist
+
+      - name: Install Dependencies
+        run: |-
+          pip install -e ".[package]"
+
+      - name: Publish to Test PyPi
+        if: ${{ !inputs.is_production }}
+        run: |-
+          python Build.py Publish "${{ secrets.TEST_PYPI_API_TOKEN }}" --verbose
+
+      - name: Publish to PyPi
+        if: ${{ inputs.is_production }}
+        run: |-
+          python Build.py Publish "${{ secrets.PRODUCTION_PYPI_API_TOKEN }}" --verbose --production

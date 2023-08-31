@@ -8,8 +8,8 @@ on:
 
 jobs:
   _e0837d8d-cb45-43f5-83de-7c1997d74e27:
-    name: "Validate: ${{ github.base_ref }}"
-    uses: ./.github/workflows/callable_validate.yaml
+    name: "Validate and Package: ${{ github.base_ref }}"
+    uses: ./.github/workflows/callable_validate_and_package.yaml
     with:
       include_benchmarks: false
       code_coverage: false
