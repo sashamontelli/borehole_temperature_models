@@ -3,8 +3,14 @@ run-name: "${{ github.run_number }} [${{ github.actor }}] on ${{ github.ref_name
 
 on:
   workflow_dispatch:
+    inputs:
+      include_benchmarks: { type: boolean, required: false, default: false, description: "Include benchmarks when running tests." }
+      code_coverage: { type: boolean, required: false, default: false, description: "Extract code coverage metrics when running tests." }
 
 jobs:
   _61e34512-57b7-4303-81cd-06912ee8a185:
-    name: "Validate (${{ github.ref_name }})"
+    name: "Validate: ${{ github.ref_name }}"
     uses: ./.github/workflows/callable_validate.yaml
+    with:
+      include_benchmarks: ${{ inputs.include_benchmarks }}
+      code_coverage: ${{ inputs.code_coverage }}

@@ -54,10 +54,12 @@ dynamic = [
 [project.optional-dependencies]
 # Dependnecies required to develop the library
 dev = [
+    "py", # Works around an issue with pytest-benchmark (https://github.com/pytest-dev/pytest/issues/10420)
     "pyfakefs ~= 5.2",
     "pytest ~= 7.4",
     "pytest-benchmark ~= 3.4",
     "pytest-cov ~= 4.1",
+    "typer ~= 0.6",
 ]
 
 # Dependencies required to package the library

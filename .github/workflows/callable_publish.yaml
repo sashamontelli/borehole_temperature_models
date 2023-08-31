@@ -1,0 +1,32 @@
+name: "[impl] Publishing content previously built from this repository."
+
+on:
+  workflow_call:
+    inputs:
+      is_production: { type: boolean, description: "True if the script should publish to a production PyPi server, False to publish to a test server.", required: false, default: false }
+      # TODO: Need archive location
+
+jobs:
+  Publish:
+    strategy:
+      matrix:
+        # Note that we don't need to include the os as the packages produced do not contain binary content.
+        os:
+          # - macos-latest
+          - ubuntu-latest
+          # - windows-latest
+
+        # Note that we only need to include a single python version for each major release as the package
+        # does not depend on minor release information.
+        python_version:
+          # - "3.9"
+          - "3.10"
+          # - "3.11"
+
+    name: "Publish: ${{ matrix.os }}_${{ matrix.python_version }}"
+    runs-on: "${{ matrix.os }}"
+
+    steps:
+      - name: Placeholder
+        run: |-
+          echo "This is a placeholder introduced because GitHub only allows the manual invocation of workflows that exist on the mainline branch. The pull request that includes this file will be merged into the mainline branch and subsequent pull requests will replace this placeholder with actual content that can be verified."
