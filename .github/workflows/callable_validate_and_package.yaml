@@ -9,52 +9,11 @@ on:
 jobs:
   # ----------------------------------------------------------------------
   # |  Test
-  _d6637bff-b27b-4b16-83d9-a828e1684e4e:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-
-        python_version:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-
-    name: "Test: ${{ matrix.os }}_python${{ matrix.python_version }}"
-    runs-on: "${{ matrix.os }}"
-
-    steps:
-      # Ensure that windows machines support long paths
-      - name: git Long File Path Support on Windows
-        if: ${{ startsWith(matrix.os, 'windows') }}
-        run: |-
-          git config --system core.longpaths true
-
-      - uses: actions/checkout@v3
-
-      - name: Setup Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python_version }}
-
-      - name: Install Dependencies
-        run: |-
-          pip install -e ".[dev]"
-
-      - name: Create Test Command Line
-        id: test_command_line
-        uses: actions/github-script@v6
-        with:
-          result-encoding: string
-          script: |
-            return `python Build.py Test --verbose ${ ${{ inputs.include_benchmarks }} ? '--benchmark' : '' } ${ ${{ inputs.code_coverage }} ? '--code-coverage' : '' }`;
-
-      - name: Run Tests
-        run: |-
-          ${{ steps.test_command_line.outputs.result }}
+  Test:
+    uses: ./.github/workflows/callable_test.yaml
+    with:
+      include_benchmarks: false
+      code_coverage: false
 
   # ----------------------------------------------------------------------
   # |  Package
@@ -77,7 +36,7 @@ jobs:
     name: "Package: ${{ matrix.os }}_python${{ matrix.python_version }}"
     runs-on: "${{ matrix.os }}"
     needs:
-      - _d6637bff-b27b-4b16-83d9-a828e1684e4e
+      - Test
 
     steps:
       # Ensure that windows machines support long paths
@@ -117,6 +76,8 @@ jobs:
   # |  Validate Package
   _719b11d3-2c81-4948-ad99-822d37d55afe:
     strategy:
+      fail-fast: false
+
       matrix:
         os:
           - macos-latest

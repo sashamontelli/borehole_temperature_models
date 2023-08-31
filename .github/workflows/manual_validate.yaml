@@ -9,8 +9,8 @@ on:
 
 jobs:
   _61e34512-57b7-4303-81cd-06912ee8a185:
-    name: "Validate: ${{ github.ref_name }}"
-    uses: ./.github/workflows/callable_validate.yaml
+    name: "Validate and Package: ${{ github.ref_name }}"
+    uses: ./.github/workflows/callable_validate_and_package.yaml
     with:
       include_benchmarks: ${{ inputs.include_benchmarks }}
       code_coverage: ${{ inputs.code_coverage }}

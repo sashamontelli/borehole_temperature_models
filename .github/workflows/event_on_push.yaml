@@ -11,10 +11,17 @@ concurrency: "on_push-${{ github.ref_name }}"
 
 jobs:
   _eca4b60a-baa0-484d-965f-1f8c005681c1:
-    name: "Validate (with benchmarks): ${{ github.ref_name }}"
-    uses: ./.github/workflows/callable_validate.yaml
+    name: "Test (with benchmarks): ${{ github.ref_name }}"
+    uses: ./.github/workflows/callable_test.yaml
     with:
       include_benchmarks: true
+      code_coverage: false
+
+  Test:
+    name: "Validate and Package: ${{ github.ref_name }}"
+    uses: ./.github/workflows/callable_validate_and_package.yaml
+    with:
+      include_benchmarks: false
       code_coverage: false
 
   _c60c80c3-f86f-4fc3-b867-109c3f726140:
@@ -22,6 +29,8 @@ jobs:
     uses: ./.github/workflows/callable_publish.yaml
     with:
       is_production: false # Set this value to true for true Continuous Deployment
+    secrets: inherit
 
     needs:
       - _eca4b60a-baa0-484d-965f-1f8c005681c1
+      - Test

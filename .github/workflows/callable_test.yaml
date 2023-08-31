@@ -1,0 +1,58 @@
+name: "[impl] Tests functionality in this repository."
+
+on:
+  workflow_call:
+    inputs:
+      include_benchmarks: { type: boolean, required: true, description: "Include benchmarks when running tests." }
+      code_coverage: { type: boolean, required: true, description: "Extract code coverage metrics when running tests." }
+
+jobs:
+  # ----------------------------------------------------------------------
+  # |  Test
+  Test:
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+        python_version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+
+    name: "${{ matrix.os }}_python${{ matrix.python_version }}"
+    runs-on: "${{ matrix.os }}"
+
+    steps:
+      # Ensure that windows machines support long paths
+      - name: git Long File Path Support on Windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |-
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v3
+
+      - name: Setup Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install Dependencies
+        run: |-
+          pip install -e ".[dev]"
+
+      - name: Create Test Command Line
+        id: test_command_line
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            return `python Build.py Test --verbose ${ ${{ inputs.include_benchmarks }} ? '--benchmark' : '' } ${ ${{ inputs.code_coverage }} ? '--code-coverage' : '' }`;
+
+      - name: Run Tests
+        run: |-
+          ${{ steps.test_command_line.outputs.result }}
