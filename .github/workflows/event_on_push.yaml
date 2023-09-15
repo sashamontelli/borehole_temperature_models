@@ -28,7 +28,7 @@ jobs:
     name: "Publish: ${{ github.ref_name }}"
     uses: ./.github/workflows/callable_publish.yaml
     with:
-      is_production: false # ${{ github.ref_name == 'master' }}
+      is_production: ${{ github.ref_name == 'master' }}
     secrets: inherit
 
     needs:
